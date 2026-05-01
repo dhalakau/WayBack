@@ -1,0 +1,16 @@
+{
+  "id": "itm_001",
+  "name": "Marienplatz",
+  "category": "culture",
+  "lat": 48.1374,
+  "lng": 11.5755,
+  "savedAt": 1729382400000,
+  "lastViewedAt": 1746115200000,
+  "viewCount": 4,
+  "notes": "Glockenspiel plays at 11am and noon. Best viewed from in front of the Neues Rathaus. Cafe Glockenspiel on the 5th floor opposite has the best window seats but is overpriced.",
+  "attachments": [
+    { "type": "photo", "url": "https://example.com/photos/marienplatz.jpg" },
+    { "type": "photo", "url": "https://example.com/photos/glockenspiel.jpg" },
+    { "type": "document", "url": "https://example.com/docs/marienplatz-history.pdf" }
+  ]
+}

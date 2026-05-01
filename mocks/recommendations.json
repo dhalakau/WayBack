@@ -1,0 +1,116 @@
+[
+  {
+    "item": {
+      "id": "itm_001",
+      "name": "Marienplatz",
+      "category": "culture",
+      "lat": 48.1374,
+      "lng": 11.5755,
+      "savedAt": 1729382400000,
+      "lastViewedAt": 1730851200000,
+      "viewCount": 3,
+      "notes": "Glockenspiel plays at 11am and noon. Best viewed from in front of the Neues Rathaus.",
+      "attachments": [
+        { "type": "photo", "url": "https://example.com/photos/marienplatz.jpg" }
+      ]
+    },
+    "score": 0.912,
+    "explanation": {
+      "method": "CIA",
+      "reason": "nearby_and_recent_save",
+      "distanceMeters": 180,
+      "monthsSinceSaved": 6,
+      "details": { "activationLevel": 0.78 }
+    }
+  },
+  {
+    "item": {
+      "id": "itm_005",
+      "name": "Viktualienmarkt",
+      "category": "food",
+      "lat": 48.1352,
+      "lng": 11.5765,
+      "savedAt": 1729900000000,
+      "lastViewedAt": 1730900000000,
+      "viewCount": 4,
+      "notes": "Caspar Plautz for potato salad, Schlemmermeyer for sausages. Beer garden in the middle.",
+      "attachments": []
+    },
+    "score": 0.847,
+    "explanation": {
+      "method": "CIA",
+      "reason": "nearby_frequent_view",
+      "distanceMeters": 420,
+      "monthsSinceSaved": 6,
+      "details": { "activationLevel": 0.71 }
+    }
+  },
+  {
+    "item": {
+      "id": "itm_003",
+      "name": "Hofbräuhaus",
+      "category": "food",
+      "lat": 48.1376,
+      "lng": 11.5797,
+      "savedAt": 1728000000000,
+      "lastViewedAt": 1728500000000,
+      "viewCount": 1,
+      "notes": "Order the half-chicken with kartoffelsalat. Touristy but worth one visit.",
+      "attachments": []
+    },
+    "score": 0.783,
+    "explanation": {
+      "method": "CIA",
+      "reason": "nearby_unvisited",
+      "distanceMeters": 310,
+      "monthsSinceSaved": 7,
+      "details": { "activationLevel": 0.64 }
+    }
+  },
+  {
+    "item": {
+      "id": "itm_004",
+      "name": "Deutsches Museum",
+      "category": "indoor",
+      "lat": 48.1300,
+      "lng": 11.5833,
+      "savedAt": 1725148800000,
+      "lastViewedAt": 1725148800000,
+      "viewCount": 1,
+      "notes": "Allow at least 4 hours. The mining exhibit is in the basement and easy to miss.",
+      "attachments": [
+        { "type": "ticket", "url": "https://example.com/tickets/deutsches-museum.pdf" }
+      ]
+    },
+    "score": 0.671,
+    "explanation": {
+      "method": "CIA",
+      "reason": "matches_weather_indoor",
+      "distanceMeters": 980,
+      "monthsSinceSaved": 8,
+      "details": { "activationLevel": 0.55, "weatherMatch": "rain" }
+    }
+  },
+  {
+    "item": {
+      "id": "itm_002",
+      "name": "Englischer Garten",
+      "category": "outdoor",
+      "lat": 48.1642,
+      "lng": 11.6056,
+      "savedAt": 1727308800000,
+      "lastViewedAt": 1730000000000,
+      "viewCount": 5,
+      "notes": "Surfers at the Eisbach wave near the south entrance.",
+      "attachments": []
+    },
+    "score": 0.524,
+    "explanation": {
+      "method": "CIA",
+      "reason": "saved_long_ago",
+      "distanceMeters": 3200,
+      "monthsSinceSaved": 7,
+      "details": { "activationLevel": 0.41 }
+    }
+  }
+]
