@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom'
 import { getExplanationText } from '../utils/explanationText'
 
 const METHODS = [
-  { key: 'CIA', label: 'Near me' },
-  { key: 'CBR', label: 'Based on history' },
-  { key: 'JITIR', label: 'For this moment' },
+  { key: 'CIA', label: 'Pick up where you left off' },
+  { key: 'CBR', label: 'Your vibe' },
+  { key: 'JITIR', label: 'Right now' },
 ]
 
 function FeedPage() {
@@ -24,18 +24,18 @@ function FeedPage() {
 
       <div className="flex gap-2 mb-6">
         {METHODS.map(method => (
-        <button
-        key={method.key}
-        onClick={() => setActiveMethod(method.key)}
-        className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-        activeMethod === method.key
-        ? 'bg-[#2D6A4F] text-white border-[#2D6A4F]'
-        : 'bg-white text-gray-500 border-gray-200 hover:border-[#2D6A4F] hover:text-[#2D6A4F]'
-    }`}
-  >
-    {method.label}
-  </button>
-))}
+          <button
+            key={method.key}
+            onClick={() => setActiveMethod(method.key)}
+            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+              activeMethod === method.key
+                ? 'bg-[#2D6A4F] text-white border-[#2D6A4F]'
+                : 'bg-white text-gray-500 border-gray-200 hover:border-[#2D6A4F] hover:text-[#2D6A4F]'
+            }`}
+          >
+            {method.label}
+          </button>
+        ))}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -51,6 +51,7 @@ function FeedPage() {
             <p className="text-sm text-gray-700 mb-4">{rec.item.notes}</p>
             <Link
               to={`/item/${rec.item.id}`}
+              state={{ method: activeMethod }}
               className="text-sm font-medium text-[#2D6A4F] hover:underline"
             >
               View details →
