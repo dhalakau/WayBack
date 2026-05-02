@@ -61,6 +61,16 @@ def months_since(dt):
     return round((now_utc() - dt).days / 30.44, 1)
 
 
+def time_of_day_query():
+    """Fallback query for JITIR when no text context is provided by the client."""
+    hour = datetime.datetime.now().hour
+    if 5 <= hour < 11:  return "breakfast cafe morning coffee"
+    if 11 <= hour < 14: return "lunch food market restaurant"
+    if 14 <= hour < 18: return "museum culture sightseeing attractions"
+    if 18 <= hour < 23: return "dinner restaurant evening drinks"
+    return "bar drinks night"
+
+
 def item_to_dict(item):
     """Serialise an Item to the camelCase contract shape."""
     return {
@@ -73,7 +83,7 @@ def item_to_dict(item):
         "lastViewedAt": to_ms(item.last_viewed_at),
         "viewCount":    item.view_count or 0,
         "notes":        item.description or "",
-        "attachments":  [],   # not stored in DB yet — placeholder for v2
+        "attachments":  [],
     }
 
 
@@ -87,7 +97,7 @@ def home():
 
 
 # ---------------------------------------------------------------------------
-# GET /saved-items  — all items for a user
+# GET /saved-items
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items", methods=["GET"])
@@ -99,7 +109,7 @@ def get_saved_items():
 
 
 # ---------------------------------------------------------------------------
-# GET /saved-items/:id  — single item; bumps lastViewedAt + viewCount
+# GET /saved-items/:id
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items/<int:item_id>", methods=["GET"])
@@ -110,7 +120,6 @@ def get_saved_item(item_id):
         db.close()
         return jsonify({"error": "Item not found"}), 404
 
-    # Side effect: record this view (feeds CIA ranking model)
     item.last_viewed_at = now_utc()
     item.view_count = (item.view_count or 0) + 1
     db.commit()
@@ -121,7 +130,7 @@ def get_saved_item(item_id):
 
 
 # ---------------------------------------------------------------------------
-# POST /saved-items  — create a new saved item
+# POST /saved-items
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items", methods=["POST"])
@@ -167,7 +176,7 @@ def delete_saved_item(item_id):
 
 
 # ---------------------------------------------------------------------------
-# GET /recommendations  — context-ranked saved items
+# GET /recommendations
 # ---------------------------------------------------------------------------
 
 @app.route("/recommendations", methods=["GET"])
@@ -178,6 +187,7 @@ def recommendations():
     method_name = request.args.get("method", default="cia").lower()
     category    = request.args.get("category", default=None)
     text        = request.args.get("text", default="")
+    weather     = request.args.get("weather", default=None)
 
     if lat is None or lng is None:
         return jsonify({"error": "lat and lng are required"}), 400
@@ -192,10 +202,11 @@ def recommendations():
 
     context = {
         "lat":              lat,
-        "lon":              lng,   # recommenders use 'lon' internally
+        "lon":              lng,
         "now":              now_utc(),
         "current_category": category,
-        "current_text":     text,
+        "current_text":     text or time_of_day_query(),
+        "weather":          weather,
     }
 
     recs = method.recommend(items, context, top_k=top_k)
@@ -205,11 +216,11 @@ def recommendations():
             "item":  item_to_dict(r["item"]),
             "score": r["score"],
             "explanation": {
-                "method":          method_name.upper(),
-                "reason":          "context_match",
-                "distanceMeters":  haversine_meters(lat, lng, r["item"].latitude, r["item"].longitude),
+                "method":           method_name.upper(),
+                "reason":           "context_match",
+                "distanceMeters":   haversine_meters(lat, lng, r["item"].latitude, r["item"].longitude),
                 "monthsSinceSaved": months_since(r["item"].created_at),
-                "details":         {"description": r["explanation"]},
+                "details":          {"description": r["explanation"]},
             },
         }
         for r in recs
@@ -217,7 +228,7 @@ def recommendations():
 
 
 # ---------------------------------------------------------------------------
-# POST /feedback  — record useful / not useful on a recommendation
+# POST /feedback
 # ---------------------------------------------------------------------------
 
 @app.route("/feedback", methods=["POST"])
