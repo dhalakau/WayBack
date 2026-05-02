@@ -62,13 +62,46 @@ def months_since(dt):
 
 
 def time_of_day_query():
-    """Fallback query for JITIR when no text context is provided by the client."""
+    """Fallback query for JITIR when no text context is provided."""
     hour = datetime.datetime.now().hour
     if 5 <= hour < 11:  return "breakfast cafe morning coffee"
     if 11 <= hour < 14: return "lunch food market restaurant"
     if 14 <= hour < 18: return "museum culture sightseeing attractions"
     if 18 <= hour < 23: return "dinner restaurant evening drinks"
     return "bar drinks night"
+
+
+def pick_reason(item, distance_m, months_old, weather):
+    """
+    Pick the most appropriate reason code based on real item data.
+    These codes match the frontend's explanationText.js mapping.
+    """
+    view_count = item.view_count or 0
+    is_nearby  = distance_m is not None and distance_m < 500
+    is_far     = distance_m is not None and distance_m > 2000
+    is_old     = months_old is not None and months_old > 3
+    is_recent  = months_old is not None and months_old <= 3
+    is_indoor  = item.category in ("museum", "indoor", "shopping", "cafe")
+
+    # Weather match takes priority on rainy days
+    if weather == "rain" and is_indoor:
+        return "matches_weather_indoor"
+
+    # Far away + saved long ago → "time to revisit"
+    if is_far and is_old:
+        return "saved_long_ago"
+
+    # Nearby items — pick reason based on view history
+    if is_nearby:
+        if view_count >= 2:
+            return "nearby_frequent_view"
+        if view_count == 0:
+            return "nearby_unvisited"
+        if is_recent:
+            return "nearby_and_recent_save"
+
+    # Fallback for items in the middle ground
+    return "nearby_and_recent_save" if is_recent else "saved_long_ago"
 
 
 def item_to_dict(item):
@@ -83,7 +116,7 @@ def item_to_dict(item):
         "lastViewedAt": to_ms(item.last_viewed_at),
         "viewCount":    item.view_count or 0,
         "notes":        item.description or "",
-        "attachments":  [],
+        "attachments":  [],   # not stored in DB yet — placeholder for v2
     }
 
 
@@ -97,7 +130,7 @@ def home():
 
 
 # ---------------------------------------------------------------------------
-# GET /saved-items
+# GET /saved-items  — all items for a user
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items", methods=["GET"])
@@ -109,7 +142,7 @@ def get_saved_items():
 
 
 # ---------------------------------------------------------------------------
-# GET /saved-items/:id
+# GET /saved-items/:id  — single item; bumps lastViewedAt + viewCount
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items/<int:item_id>", methods=["GET"])
@@ -120,6 +153,7 @@ def get_saved_item(item_id):
         db.close()
         return jsonify({"error": "Item not found"}), 404
 
+    # Side effect: record this view (feeds CIA ranking model)
     item.last_viewed_at = now_utc()
     item.view_count = (item.view_count or 0) + 1
     db.commit()
@@ -130,7 +164,7 @@ def get_saved_item(item_id):
 
 
 # ---------------------------------------------------------------------------
-# POST /saved-items
+# POST /saved-items  — create a new saved item
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items", methods=["POST"])
@@ -176,7 +210,7 @@ def delete_saved_item(item_id):
 
 
 # ---------------------------------------------------------------------------
-# GET /recommendations
+# GET /recommendations  — context-ranked saved items
 # ---------------------------------------------------------------------------
 
 @app.route("/recommendations", methods=["GET"])
@@ -202,7 +236,7 @@ def recommendations():
 
     context = {
         "lat":              lat,
-        "lon":              lng,
+        "lon":              lng,   # recommenders use 'lon' internally
         "now":              now_utc(),
         "current_category": category,
         "current_text":     text or time_of_day_query(),
@@ -211,24 +245,30 @@ def recommendations():
 
     recs = method.recommend(items, context, top_k=top_k)
 
-    return jsonify([
-        {
-            "item":  item_to_dict(r["item"]),
+    results = []
+    for r in recs:
+        item = r["item"]
+        dist   = haversine_meters(lat, lng, item.latitude, item.longitude)
+        months = months_since(item.created_at)
+        reason = pick_reason(item, dist, months, weather)
+
+        results.append({
+            "item":  item_to_dict(item),
             "score": r["score"],
             "explanation": {
                 "method":           method_name.upper(),
-                "reason":           "context_match",
-                "distanceMeters":   haversine_meters(lat, lng, r["item"].latitude, r["item"].longitude),
-                "monthsSinceSaved": months_since(r["item"].created_at),
+                "reason":           reason,
+                "distanceMeters":   dist,
+                "monthsSinceSaved": months,
                 "details":          {"description": r["explanation"]},
             },
-        }
-        for r in recs
-    ])
+        })
+
+    return jsonify(results)
 
 
 # ---------------------------------------------------------------------------
-# POST /feedback
+# POST /feedback  — record useful / not useful on a recommendation
 # ---------------------------------------------------------------------------
 
 @app.route("/feedback", methods=["POST"])
@@ -259,6 +299,36 @@ def post_feedback():
     db.close()
     return "", 204
 
+# ---------------------------------------------------------------------------
+# GET /feedback/stats  — aggregate feedback per method
+# ---------------------------------------------------------------------------
+
+@app.route("/feedback/stats", methods=["GET"])
+def feedback_stats():
+    db = SessionLocal()
+    feedbacks = db.query(Feedback).all()
+    db.close()
+
+    stats = {}
+    for fb in feedbacks:
+        method = (fb.method or "UNKNOWN").upper()
+        if method not in stats:
+            stats[method] = {"useful": 0, "notUseful": 0}
+        if fb.useful:
+            stats[method]["useful"] += 1
+        else:
+            stats[method]["notUseful"] += 1
+
+    # Compute success rate per method
+    for method, counts in stats.items():
+        total = counts["useful"] + counts["notUseful"]
+        counts["total"] = total
+        counts["successRate"] = round(counts["useful"] / total, 3) if total else 0.0
+
+    return jsonify({
+        "perMethod": stats,
+        "totalFeedback": sum(s["total"] for s in stats.values()),
+    })
 
 # ---------------------------------------------------------------------------
 

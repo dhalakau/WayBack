@@ -76,6 +76,7 @@ function FeedPage() {
                 <p className="text-sm text-gray-700 mb-4">{rec.item.notes}</p>
                 <Link
                   to={`/item/${rec.item.id}`}
+                  state={{ method: activeMethod }}
                   className="text-sm font-medium text-[#2D6A4F] hover:underline"
                 >
                   View details →

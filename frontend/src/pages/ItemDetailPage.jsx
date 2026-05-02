@@ -1,8 +1,12 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 
 function ItemDetailPage() {
   const { id } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const method = location.state?.method || 'CIA'
+
   const [item, setItem] = useState(null)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
@@ -20,7 +24,7 @@ function ItemDetailPage() {
         userId: 'user_demo',
         itemId: item.id,
         useful: useful,
-        method: 'CIA',
+        method: method,
         contextSnapshot: { lat: 48.137, lng: 11.575, time: Date.now() }
       })
     })
@@ -31,7 +35,12 @@ function ItemDetailPage() {
     <div className="min-h-screen bg-[#F8F7F4] px-4 py-6 md:px-8 max-w-2xl mx-auto">
       {item ? (
         <div>
-          <Link to="/" className="text-sm text-[#2D6A4F] hover:underline mb-6 block">← Back</Link>
+          <button
+            onClick={() => navigate(-1)}
+            className="text-sm text-[#2D6A4F] hover:underline mb-6 block bg-transparent border-0 cursor-pointer p-0"
+          >
+            ← Back
+          </button>
 
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
             <div className="flex items-start justify-between mb-4">
