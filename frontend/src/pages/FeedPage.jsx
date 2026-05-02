@@ -7,7 +7,7 @@ function FeedPage() {
     const [recommendations, setRecommendations] = useState([])
 
     useEffect(() => {
-        fetch('/recommendations.json')
+        fetch('http://localhost:8000/recommendations?userId=user_demo&lat=48.137&lng=11.575')
             .then(response => response.json())
             .then(data => {
                 setRecommendations(data)

@@ -7,13 +7,26 @@ function ItemDetailPage() {
     const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
     useEffect(() => {
-        fetch('/saved-items.json')
+        fetch(`http://localhost:8000/saved-items/${id}?userId=user_demo`)
             .then(response => response.json())
             .then(data => {
-                const foundItem = data.find(item => item.id === id)
-                setItem(foundItem)
+                setItem(data)
             })
     }, [id])
+    const handleFeedback = (useful) => {
+        fetch('http://localhost:8000/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+        userId: 'user_demo',
+         itemId: item.id,
+         useful: useful,
+        method: 'CIA',
+        contextSnapshot: { lat: 48.137, lng: 11.575, time: Date.now() }
+         })
+    })
+    setFeedbackSubmitted(true)
+    }
     return (
         <div>
         { item ? (
@@ -27,8 +40,8 @@ function ItemDetailPage() {
                     ) : (
                     <>
                         <p>Was this recommendation useful?</p>
-                        <button onClick={() => setFeedbackSubmitted(true)}>Yes</button>
-                        <button onClick={() => setFeedbackSubmitted(true)}>No</button>
+                        <button onClick={() => handleFeedback(true)}>Yes</button>
+                        <button onClick={() => handleFeedback(false)}>No</button>
                     </>
                 )}
             </div>

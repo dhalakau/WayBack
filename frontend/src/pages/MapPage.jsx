@@ -8,7 +8,7 @@ function MapPage() {
 
   useEffect(() => {
   // fetch mock data from backend
-  fetch('/saved-items.json')
+  fetch('http://localhost:8000/saved-items?userId=user_demo')
     .then(response => response.json())
     .then(data => setSavedItems(data))
 }, [])
