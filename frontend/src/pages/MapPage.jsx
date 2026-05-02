@@ -13,18 +13,26 @@ L.Icon.Default.mergeOptions({
 
 function MapPage() {
   const [savedItems, setSavedItems] = useState([])
+  const [recommendations, setRecommendations] = useState([])
 
   useEffect(() => {
     fetch('http://localhost:8000/saved-items?userId=user_demo')
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => setSavedItems(data))
+
+    fetch('http://localhost:8000/recommendations?userId=user_demo&lat=48.137&lng=11.575&method=CIA')
+      .then(res => res.json())
+      .then(data => setRecommendations(data))
   }, [])
+
+  const recommendedIds = new Set(recommendations.map(r => r.item.id))
 
   return (
     <div className="min-h-screen bg-[#F8F7F4]">
       <div className="px-4 py-6 md:px-8 text-center">
-        <h1 className="text-2xl font-semibold text-[#1D1C1C] mb-4">WayBack</h1>
+        <h1 className="text-2xl font-semibold text-[#1D1C1C]">WayBack</h1>
       </div>
+    
 
       <MapContainer
         center={[48.137, 11.575]}
@@ -36,11 +44,17 @@ function MapPage() {
           attribution='&copy; OpenStreetMap'
         />
         {savedItems.map(item => (
-          <Marker key={item.id} position={[item.lat, item.lng]}>
+          <Marker
+            key={item.id}
+            position={[item.lat, item.lng]}
+          >
             <Popup>
               <Link to={`/item/${item.id}`} className="font-medium text-[#2D6A4F]">
                 {item.name}
               </Link>
+              {recommendedIds.has(item.id) && (
+                <p className="text-xs text-green-600 mt-1">Recommended</p>
+              )}
             </Popup>
           </Marker>
         ))}
