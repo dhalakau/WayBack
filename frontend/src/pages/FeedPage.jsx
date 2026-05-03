@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getExplanationText } from '../utils/explanationText'
+import { getExplanationText, getFullDate } from '../utils/explanationText'
 
-
-  const METHODS = [
-  { key: 'CIA', label: 'Pick up where you left off' },
-  { key: 'CBR', label: 'Your vibe' },
-  { key: 'JITIR', label: 'Right now' },
-
+const METHODS = [
+  { key: 'CIA', label: 'Near me' },
+  { key: 'CBR', label: 'Based on history' },
+  { key: 'JITIR', label: 'For this moment' },
 ]
 
 function FeedPage() {
@@ -17,19 +15,38 @@ function FeedPage() {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    setLoading(true)
-    setError(null)
-    fetch(`http://localhost:8000/recommendations?userId=user_demo&lat=48.137&lng=11.575&method=${activeMethod}`)
-      .then(response => response.json())
-      .then(data => {
-        setRecommendations(data)
-        setLoading(false)
-      })
-      .catch(() => {
-        setError('Could not load recommendations. Please try again.')
-        setLoading(false)
-      })
-  }, [activeMethod])
+  setLoading(true)
+  setError(null)
+  
+  navigator.geolocation.getCurrentPosition(
+    (position) => {
+      const { latitude, longitude } = position.coords
+      fetch(`http://localhost:8000/recommendations?userId=user_demo&lat=${latitude}&lng=${longitude}&method=${activeMethod}`)
+        .then(response => response.json())
+        .then(data => {
+          setRecommendations(data)
+          setLoading(false)
+        })
+        .catch(() => {
+          setError('Could not load recommendations. Please try again.')
+          setLoading(false)
+        })
+    },
+    () => {
+      // as a fallback, we can use a default location (e.g., city center)
+      fetch(`http://localhost:8000/recommendations?userId=user_demo&lat=48.137&lng=11.575&method=${activeMethod}`)
+        .then(response => response.json())
+        .then(data => {
+          setRecommendations(data)
+          setLoading(false)
+        })
+        .catch(() => {
+          setError('Could not load recommendations. Please try again.')
+          setLoading(false)
+        })
+    }
+  )
+}, [activeMethod])
 
   return (
     <div className="min-h-screen bg-[#F8F7F4] px-4 py-6 md:px-8 max-w-2xl mx-auto">
@@ -51,9 +68,9 @@ function FeedPage() {
         ))}
       </div>
 
-      {loading && (
+     {loading && (
         <p className="text-sm text-gray-400 text-center mt-12">Loading...</p>
-      )}
+    )}
 
       {error && (
         <div className="bg-red-50 border border-red-100 rounded-2xl p-4 text-sm text-red-500 text-center">
@@ -74,11 +91,12 @@ function FeedPage() {
                     {rec.item.category}
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 mb-3">{getExplanationText(rec.item, rec.explanation)}</p>
+                <p className="text-sm text-gray-500 mb-3" title={getFullDate(rec.item.savedAt)}>
+                {getExplanationText(rec.item, rec.explanation)}
+                </p>
                 <p className="text-sm text-gray-700 mb-4">{rec.item.notes}</p>
                 <Link
                   to={`/item/${rec.item.id}`}
-                  state={{ method: activeMethod }}
                   className="text-sm font-medium text-[#2D6A4F] hover:underline"
                 >
                   View details →
