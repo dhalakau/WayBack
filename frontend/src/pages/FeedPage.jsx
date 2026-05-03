@@ -2,10 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getExplanationText } from '../utils/explanationText'
 
-const METHODS = [
-  { key: 'CIA', label: 'Near me' },
-  { key: 'CBR', label: 'Based on history' },
-  { key: 'JITIR', label: 'For this moment' },
+
+  const METHODS = [
+  { key: 'CIA', label: 'Pick up where you left off' },
+  { key: 'CBR', label: 'Your vibe' },
+  { key: 'JITIR', label: 'Right now' },
+
 ]
 
 function FeedPage() {
