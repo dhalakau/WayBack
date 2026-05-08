@@ -11,6 +11,35 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 })
 
+// Fallback descriptions used when the live API call fails (e.g., no API credits).
+// Keeps the demo functional and shows a realistic "AI-generated" description.
+const FALLBACK_DESCRIPTIONS = {
+  attraction: [
+    'A well-known landmark worth visiting. Best in the morning to avoid crowds and get good photos.',
+    'A popular spot in the area. Allow 1-2 hours and check opening times in advance.',
+  ],
+  restaurant: [
+    'A local favorite known for authentic flavors. Reservations recommended for dinner.',
+    'Popular for its food and atmosphere. Try arriving before peak hours to get a table.',
+  ],
+  museum: [
+    'Houses a notable collection. Plan 1-2 hours and look out for student discounts.',
+    'Worth a thoughtful visit; check for special exhibitions before you go.',
+  ],
+  outdoor: [
+    'A great spot for a walk and fresh air. Best on clear days with comfortable shoes.',
+    'Scenic and relaxing. Bring water and check the weather before heading out.',
+  ],
+  shopping: [
+    'A lively shopping area with a mix of local shops and big brands. Plan at least an hour.',
+    'Good range of stores and cafés. Weekends are busiest, mornings are calmer.',
+  ],
+  bar: [
+    'Lively evening atmosphere with a solid drink menu. Best to arrive before peak hours.',
+    'Popular nightspot with a good crowd. Check if reservations are needed on weekends.',
+  ],
+}
+
 function AddMarkerOnClick({ onMapClick }) {
   useMapEvents({
     click(e) {
@@ -28,6 +57,7 @@ function MapPage() {
   const [newCategory, setNewCategory] = useState('attraction')
   const [newNotes, setNewNotes] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
+  const [usedDemoMode, setUsedDemoMode] = useState(false)
 
   useEffect(() => {
     fetch('http://localhost:8000/saved-items?userId=user_demo')
@@ -44,6 +74,8 @@ function MapPage() {
   const handleMapClick = (latlng) => {
     setNewPin(latlng)
     setNewName('')
+    setNewNotes('')
+    setUsedDemoMode(false)
   }
 
   const handleSave = () => {
@@ -65,37 +97,54 @@ function MapPage() {
         setSavedItems(prev => [...prev, item])
         setNewPin(null)
         setNewName('')
+        setNewNotes('')
+        setUsedDemoMode(false)
       })
   }
 
   const handleGenerateNotes = async () => {
-  if (!newName.trim()) return
-  setAiLoading(true)
-  try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': import.meta.env.VITE_ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 100,
-        messages: [{
-          role: 'user',
-          content: `Write a short 1-2 sentence note about this place for a traveler's saved places app. Place: "${newName}", Category: ${newCategory}. Be specific and practical. No fluff.`
-        }]
+    if (!newName.trim()) return
+    setAiLoading(true)
+    setUsedDemoMode(false)
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': import.meta.env.VITE_ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 100,
+          messages: [{
+            role: 'user',
+            content: `Write a short 1-2 sentence note about this place for a traveler's saved places app. Place: "${newName}",
+            Category: ${newCategory}. Be specific and practical. No fluff.`
+          }]
+        })
       })
-    })
-    const data = await response.json()
-    setNewNotes(data.content[0].text)
-  } catch {
-    setNewNotes('')
+
+      // If the API returns a non-2xx status (e.g., 401 no credits, 400 invalid key),
+      // throw so we fall through to the demo-mode fallback below.
+      if (!response.ok) throw new Error('API call failed')
+
+      const data = await response.json()
+
+      // Defensive check: response shape may not include text on errors.
+      if (!data.content?.[0]?.text) throw new Error('Invalid API response')
+
+      setNewNotes(data.content[0].text)
+    } catch {
+      // Fallback: pick a category-appropriate sample so the demo still works.
+      const options = FALLBACK_DESCRIPTIONS[newCategory] || FALLBACK_DESCRIPTIONS.attraction
+      const sample = options[Math.floor(Math.random() * options.length)]
+      setNewNotes(sample)
+      setUsedDemoMode(true)
+    }
+    setAiLoading(false)
   }
-  setAiLoading(false)
-}
 
   return (
     <div className="min-h-screen bg-[#F8F7F4]">
@@ -157,6 +206,11 @@ function MapPage() {
           rows={3}
           style={{ width: '100%', marginBottom: '4px', padding: '4px', border: '1px solid #ccc', borderRadius: '4px', resize: 'none' }}
         />
+        {usedDemoMode && (
+          <p style={{ fontSize: '10px', color: '#888', marginBottom: '6px', fontStyle: 'italic' }}>
+            Demo description — live AI requires API credits
+          </p>
+        )}
         <button
           onClick={handleGenerateNotes}
           disabled={!newName.trim() || aiLoading}
