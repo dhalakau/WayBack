@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   Search, X, Plus, Compass, Bookmark, Sun, Moon, Trash2, MapPin,
   Coffee, UtensilsCrossed, Trees, Wine, Bed, ShoppingBag, Wrench,
   Train, Landmark, Camera, Navigation, Locate, MoreHorizontal,
-  Sparkles, Cloud, Map as MapIcon, CirclePlus,
+  Sparkles, Cloud, Map as MapIcon, CirclePlus, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
 
@@ -17,7 +17,7 @@ import { getExplanationText } from '../utils/explanationText'
 
 const API = 'http://localhost:8000'
 const USER_ID = 'user_demo'
-const DEFAULT_CENTER = [48.137, 11.575]   // central Munich
+const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible demo location
 const DEFAULT_ZOOM = 15
 
 // Category metadata — matches the 10 categories in backend/seed.py
@@ -33,6 +33,22 @@ const CATEGORIES = {
   services:      { label: 'Services',     Icon: Wrench,          color: '#9aa0a6' },
   transport:     { label: 'Transport',    Icon: Train,           color: '#4285f4' },
 }
+
+// Per-category gradient backgrounds for the detail panel hero — gives each
+// place a distinct visual "page" feel without needing real photos.
+const CATEGORY_GRADIENTS = {
+  attraction:    'linear-gradient(135deg, #2c7a7b 0%, #4fd1c5 100%)',
+  restaurant:    'linear-gradient(135deg, #c53030 0%, #fc8181 100%)',
+  cafe:          'linear-gradient(135deg, #7b341e 0%, #d69e2e 100%)',
+  museum:        'linear-gradient(135deg, #553c9a 0%, #b794f4 100%)',
+  park:          'linear-gradient(135deg, #276749 0%, #68d391 100%)',
+  bar:           'linear-gradient(135deg, #97266d 0%, #f687b3 100%)',
+  accommodation: 'linear-gradient(135deg, #b83280 0%, #fbb6ce 100%)',
+  shopping:      'linear-gradient(135deg, #c05621 0%, #f6ad55 100%)',
+  services:      'linear-gradient(135deg, #2d3748 0%, #718096 100%)',
+  transport:     'linear-gradient(135deg, #2c5282 0%, #63b3ed 100%)',
+}
+
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
 const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
 const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z' }
@@ -157,6 +173,199 @@ function timeAgo(ms) {
   const months = Math.floor(days / 30); return `${months} month${months > 1 ? 's' : ''} ago`
 }
 
+// Straight-line distance in metres between two coords (good enough for the
+// "1.2 km away" navigation banner — turn-by-turn routing is out of scope).
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  const R = 6_371_000
+  const toRad = d => d * Math.PI / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+// -----------------------------------------------------------------------------
+// SwipeableRow — horizontal-swipe-to-dismiss, vertical scrolls naturally,
+// pure tap (no movement past ~10px) fires onTap. Drag past ~100px dismisses.
+// -----------------------------------------------------------------------------
+
+function SwipeableRow({ onTap, onDismiss, children }) {
+  const [tx, setTx] = useState(0)
+  const [dismissing, setDismissing] = useState(false)
+  const startRef = useRef({ x: 0, y: 0, locked: null, moved: false })
+
+  function onPointerDown(e) {
+    startRef.current = { x: e.clientX, y: e.clientY, locked: null, moved: false }
+  }
+  function onPointerMove(e) {
+    const dx = e.clientX - startRef.current.x
+    const dy = e.clientY - startRef.current.y
+    if (startRef.current.locked === null) {
+      if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy)) {
+        startRef.current.locked = 'h'
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      } else if (Math.abs(dy) > 10) {
+        startRef.current.locked = 'v'   // let the list scroll naturally
+      }
+    }
+    if (startRef.current.locked === 'h') {
+      startRef.current.moved = true
+      setTx(dx)
+    }
+  }
+  function onPointerUp() {
+    const lock = startRef.current.locked
+    const moved = startRef.current.moved
+    if (lock === 'h' && Math.abs(tx) > 100) {
+      // swipe-dismiss: fling off the side, then notify parent
+      setDismissing(true)
+      setTx(tx > 0 ? 500 : -500)
+      setTimeout(() => onDismiss?.(), 220)
+    } else if (lock === 'h') {
+      // snap back — drag wasn't far enough
+      setTx(0)
+    } else if (!moved) {
+      // pure tap (no horizontal lock, no movement) → fire tap
+      onTap?.()
+    }
+    startRef.current = { x: 0, y: 0, locked: null, moved: false }
+  }
+
+  const opacity = dismissing ? 0 : Math.max(0.3, 1 - Math.abs(tx) / 280)
+  return (
+    <div
+      className="wb-item wb-swipeable"
+      style={{ transform: `translateX(${tx}px)`, opacity, transition: startRef.current.locked === 'h' && !dismissing ? 'none' : 'transform 0.22s, opacity 0.22s' }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+    >
+      {children}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
+// DetailPanel — the "flipbook" view. Tapping a place opens this overlay.
+// Swipe left/right (or use the chevrons) to flip between saved places.
+// -----------------------------------------------------------------------------
+
+function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch }) {
+  const idx = items.findIndex(i => i.id === itemId)
+  const item = items[idx]
+  const [tx, setTx] = useState(0)
+  const startRef = useRef({ x: 0, y: 0, locked: null })
+  if (!item) return null
+
+  const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
+  const gradient = CATEGORY_GRADIENTS[item.category] || 'linear-gradient(135deg, #1c2530, #28323f)'
+  const CatIcon = cat.Icon
+
+  function go(delta) {
+    const next = idx + delta
+    if (next >= 0 && next < items.length) onSwitch?.(items[next].id)
+  }
+
+  function onPointerDown(e) {
+    startRef.current = { x: e.clientX, y: e.clientY, locked: null }
+  }
+  function onPointerMove(e) {
+    const dx = e.clientX - startRef.current.x
+    const dy = e.clientY - startRef.current.y
+    if (startRef.current.locked === null) {
+      if (Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) {
+        startRef.current.locked = 'h'
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      } else if (Math.abs(dy) > 12) {
+        startRef.current.locked = 'v'
+      }
+    }
+    if (startRef.current.locked === 'h') setTx(dx)
+  }
+  function onPointerUp() {
+    if (startRef.current.locked === 'h' && Math.abs(tx) > 80) {
+      // swipe to next/prev
+      const delta = tx < 0 ? 1 : -1
+      setTx(tx < 0 ? -400 : 400)
+      setTimeout(() => { go(delta); setTx(0) }, 180)
+    } else {
+      setTx(0)
+    }
+    startRef.current = { x: 0, y: 0, locked: null }
+  }
+
+  const isFirst = idx <= 0
+  const isLast = idx >= items.length - 1
+  const distance = Math.round(haversineMeters(
+    DEFAULT_CENTER[0], DEFAULT_CENTER[1], item.lat, item.lng
+  ))
+
+  return (
+    <div className="wb-detail" role="dialog" aria-modal="true" aria-label={item.name}>
+      <button className="wb-detail-close" onClick={onClose} aria-label="Close">
+        <X size={20} />
+      </button>
+
+      <div
+        className="wb-detail-page"
+        style={{ transform: `translateX(${tx}px)`, transition: startRef.current.locked === 'h' && tx !== 0 && Math.abs(tx) < 400 ? 'none' : 'transform 0.22s' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+      >
+        <div className="wb-detail-hero" style={{ background: gradient }}>
+          <div className="wb-detail-cat">
+            <CatIcon size={14} /> {cat.label}
+          </div>
+          <h2 className="wb-detail-name">{item.name}</h2>
+          <div className="wb-detail-address">{item.address || ''}</div>
+        </div>
+
+        <div className="wb-detail-body">
+          <p className="wb-detail-desc">{item.notes || 'No description yet — be the first to add one.'}</p>
+
+          <div className="wb-detail-stats">
+            <div className="wb-stat">
+              <div className="wb-stat-label">Distance</div>
+              <div className="wb-stat-val">{distance < 1000 ? `${distance} m` : `${(distance/1000).toFixed(1)} km`}</div>
+            </div>
+            <div className="wb-stat">
+              <div className="wb-stat-label">Saved</div>
+              <div className="wb-stat-val">{timeAgo(item.savedAt)}</div>
+            </div>
+            <div className="wb-stat">
+              <div className="wb-stat-label">Views</div>
+              <div className="wb-stat-val">{item.viewCount}</div>
+            </div>
+          </div>
+
+          <div className="wb-detail-actions">
+            <button className="wb-detail-primary" onClick={() => onNavigate(item)}>
+              <Navigation size={18} /> Directions
+            </button>
+            <button className="wb-detail-secondary" onClick={() => onDelete(item.id)} aria-label="Delete">
+              <Trash2 size={18} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button className="wb-detail-arrow left" onClick={() => go(-1)} disabled={isFirst} aria-label="Previous">
+        <ChevronLeft size={22} />
+      </button>
+      <button className="wb-detail-arrow right" onClick={() => go(1)} disabled={isLast} aria-label="Next">
+        <ChevronRight size={22} />
+      </button>
+
+      <div className="wb-detail-dots">
+        {idx + 1} / {items.length}
+      </div>
+    </div>
+  )
+}
+
 // -----------------------------------------------------------------------------
 // Main component
 // -----------------------------------------------------------------------------
@@ -176,6 +385,11 @@ export default function MapPage() {
   const [newPin, setNewPin] = useState(null)           // { lat, lng } while in add mode
   const [newPlace, setNewPlace] = useState({ name: '', category: '', notes: '' })
 
+  // NEW: phase-3 state
+  const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
+  const [dismissed, setDismissed] = useState(new Set())    // hide from Map view (not Saved)
+  const [navTarget, setNavTarget] = useState(null)         // active route destination
+
   const [toast, setToast] = useState(null)
   const [centerTrigger, setCenterTrigger] = useState(0)
 
@@ -187,13 +401,16 @@ export default function MapPage() {
 
   // ---- initial data + geolocation -------------------------------------------
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        () => {}, // silent failure → keep default Munich center
-        { timeout: 4000 }
-      )
-    }
+    // Geolocation intentionally disabled for the demo — fixed Hauptbahnhof
+    // start point gives a stable frame of reference for the navigation feature.
+    // To re-enable, uncomment the navigator.geolocation block below.
+    //
+    // if (navigator.geolocation) {
+    //   navigator.geolocation.getCurrentPosition(
+    //     pos => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+    //     () => {}, { timeout: 4000 }
+    //   )
+    // }
     fetchSaved()
   }, []) // eslint-disable-line
 
@@ -296,6 +513,33 @@ export default function MapPage() {
     } catch {/* eval data is non-critical for UX */}
   }
 
+  // ---- detail panel (the "flipbook" view) ------------------------------------
+  // Tapping a place opens this; it also fires GET /saved-items/:id which the
+  // backend uses to increment viewCount + lastViewedAt (feeds the CIA model).
+  async function openDetail(itemId) {
+    setDetailItemId(itemId)
+    try { await fetch(`${API}/saved-items/${itemId}`) } catch {}
+  }
+
+  // ---- swipe-to-dismiss on recommendations -----------------------------------
+  // Removes the rec from the current Map view only. The place stays in Saved.
+  function dismissRec(itemId) {
+    setDismissed(prev => {
+      const next = new Set(prev)
+      next.add(itemId)
+      return next
+    })
+  }
+
+  // ---- directions FAB --------------------------------------------------------
+  // Toggles a polyline from userLoc to the top recommendation (or clears it).
+  function toggleDirections() {
+    if (navTarget) { setNavTarget(null); return }
+    const list = listToShow()
+    if (list.length === 0) { showToast('Nothing nearby to navigate to'); return }
+    setNavTarget(list[0].item)
+  }
+
   // ---- derived: what the sheet's list shows ---------------------------------
   function listToShow() {
     const q = search.trim().toLowerCase()
@@ -306,11 +550,12 @@ export default function MapPage() {
     }
 
     if (mode === 'map') {
-      // Use server-ranked recommendations; fall back to all saved if recs not yet loaded
+      // Use server-ranked recommendations; fall back to all saved if recs not yet loaded.
+      // Filter out items the user has swiped away from the Map view (still in Saved).
       const recs = recommendations.length ? recommendations : savedItems.map(it => ({ item: it, score: 0, explanation: {} }))
-      return recs.filter(r => filterFn(r.item))
+      return recs.filter(r => !dismissed.has(r.item.id) && filterFn(r.item))
     } else {
-      // Saved mode: locally sorted full list
+      // Saved mode: locally sorted full list (ignores dismissed — it's a different view)
       const items = [...savedItems].filter(filterFn)
       if (sort === 'recent') items.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
       if (sort === 'views')  items.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
@@ -403,10 +648,16 @@ export default function MapPage() {
                 key={it.id}
                 position={[it.lat, it.lng]}
                 icon={savedMarkerIcon(it.category)}
-                eventHandlers={{ click: () => showToast(it.name) }}
+                eventHandlers={{ click: () => openDetail(it.id) }}
               />
             ))}
             {mode === 'add' && newPin && <Marker position={[newPin.lat, newPin.lng]} icon={dropPinIcon} />}
+            {navTarget && (
+              <Polyline
+                positions={[[userLoc.lat, userLoc.lng], [navTarget.lat, navTarget.lng]]}
+                pathOptions={{ color: '#a0e6d4', weight: 4, opacity: 0.9, dashArray: '8 6' }}
+              />
+            )}
           </MapContainer>
         </div>
 
@@ -474,7 +725,11 @@ export default function MapPage() {
           <button className="wb-fab" onClick={() => setCenterTrigger(t => t + 1)} aria-label="My location">
             <Locate size={22} />
           </button>
-          <button className="wb-fab" onClick={() => showToast('Pick a place to navigate to')} aria-label="Directions">
+          <button
+            className={`wb-fab ${navTarget ? 'is-active' : ''}`}
+            onClick={toggleDirections}
+            aria-label="Directions"
+          >
             <Navigation size={22} />
           </button>
         </div>
@@ -522,12 +777,9 @@ export default function MapPage() {
             ) : list.map(({ item, score, explanation }) => {
               const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
               const ItemIcon = cat.Icon
-              const reasonText = explanation?.reason
-                ? getExplanationText(item, explanation)
-                : null
-              return (
-                <div key={item.id} className="wb-item"
-                  onClick={() => showToast(item.name)}>
+              const reasonText = explanation?.reason ? getExplanationText(item, explanation) : null
+              const content = (
+                <>
                   <div className="wb-item-icon" style={{ background: cat.color + '26' }}>
                     <ItemIcon size={20} color={cat.color} />
                   </div>
@@ -549,6 +801,22 @@ export default function MapPage() {
                       <Trash2 size={18} />
                     </button>
                   )}
+                </>
+              )
+              if (mode === 'map') {
+                return (
+                  <SwipeableRow
+                    key={item.id}
+                    onTap={() => openDetail(item.id)}
+                    onDismiss={() => dismissRec(item.id)}
+                  >
+                    {content}
+                  </SwipeableRow>
+                )
+              }
+              return (
+                <div key={item.id} className="wb-item" onClick={() => openDetail(item.id)}>
+                  {content}
                 </div>
               )
             })}
@@ -606,6 +874,32 @@ export default function MapPage() {
             <span>Add</span>
           </button>
         </nav>
+
+        {/* ---- navigation banner (shown when a route is active) ----------- */}
+        {navTarget && (
+          <div className="wb-nav-banner">
+            <Navigation size={16} />
+            <div className="wb-nav-banner-text">
+              <div className="t">To {navTarget.name}</div>
+              <div className="s">{Math.round(haversineMeters(userLoc.lat, userLoc.lng, navTarget.lat, navTarget.lng))} m straight line</div>
+            </div>
+            <button className="wb-nav-banner-x" onClick={() => setNavTarget(null)} aria-label="Clear directions">
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
+        {/* ---- detail panel ('flipbook') ----------------------------------- */}
+        {detailItemId != null && (
+          <DetailPanel
+            itemId={detailItemId}
+            items={savedItems}
+            onClose={() => setDetailItemId(null)}
+            onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); showToast(`Directions to ${item.name}`) }}
+            onDelete={(id) => { deleteItem(id); setDetailItemId(null) }}
+            onSwitch={(id) => openDetail(id)}
+          />
+        )}
 
         {/* ---- toast -------------------------------------------------------- */}
         {toast && <div className="wb-toast show">{toast}</div>}
@@ -878,6 +1172,143 @@ function ScopedStyles() {
         height: 48px; background: var(--accent); color: var(--accent-on);
         border: none; border-radius: 24px; font-size: 15px; font-weight: 500;
         cursor: pointer; margin-top: 4px;
+      }
+
+      /* ===== phase 3 ============================================== */
+
+      /* Swipeable rows — make sure they cooperate with vertical scrolling */
+      .wb-swipeable { touch-action: pan-y; will-change: transform; }
+
+      /* Navigation banner — appears at the top when a route is drawn */
+      .wb-nav-banner {
+        position: absolute; top: 12px; left: 12px; right: 12px;
+        background: var(--accent); color: var(--accent-on);
+        border-radius: 16px; padding: 10px 12px;
+        display: flex; align-items: center; gap: 10px;
+        z-index: 750;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.22);
+      }
+      .wb-nav-banner-text { flex: 1; min-width: 0; }
+      .wb-nav-banner-text .t { font-size: 13px; font-weight: 600; }
+      .wb-nav-banner-text .s { font-size: 11px; opacity: 0.85; }
+      .wb-nav-banner-x {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: rgba(0,0,0,0.12); border: none; cursor: pointer;
+        color: var(--accent-on); display: flex; align-items: center; justify-content: center;
+      }
+      .wb-fab.is-active {
+        background: var(--accent); color: var(--accent-on);
+      }
+      .wb-fab.is-active svg { color: var(--accent-on); }
+
+      /* Detail panel — the "flipbook" overlay */
+      .wb-detail {
+        position: absolute; inset: 0;
+        background: var(--bg);
+        z-index: 900;
+        display: flex; flex-direction: column;
+        animation: wbDetailIn 0.28s cubic-bezier(0.2,0.8,0.2,1);
+      }
+      @keyframes wbDetailIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .wb-detail-close {
+        position: absolute; top: 14px; right: 14px;
+        width: 36px; height: 36px; border-radius: 50%;
+        background: rgba(0,0,0,0.4); color: #ffffff;
+        border: none; cursor: pointer; z-index: 10;
+        display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(6px);
+      }
+      .wb-detail-page {
+        flex: 1; display: flex; flex-direction: column;
+        overflow-y: auto;
+        touch-action: pan-y;
+      }
+      .wb-detail-hero {
+        min-height: 240px; padding: 36px 22px 22px;
+        display: flex; flex-direction: column; justify-content: flex-end;
+        color: #ffffff;
+        position: relative;
+      }
+      .wb-detail-cat {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(0,0,0,0.25); backdrop-filter: blur(6px);
+        padding: 5px 11px; border-radius: 12px;
+        font-size: 11px; font-weight: 500;
+        align-self: flex-start;
+        text-transform: uppercase; letter-spacing: 0.6px;
+      }
+      .wb-detail-name {
+        margin: 12px 0 4px;
+        font-size: 28px; font-weight: 600;
+        line-height: 1.15;
+        letter-spacing: -0.4px;
+      }
+      .wb-detail-address {
+        font-size: 13px; opacity: 0.85;
+      }
+      .wb-detail-body {
+        padding: 24px 22px 36px;
+        display: flex; flex-direction: column; gap: 22px;
+      }
+      .wb-detail-desc {
+        font-size: 15px; line-height: 1.55;
+        color: var(--text-1);
+        margin: 0;
+      }
+      .wb-detail-stats {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 14px 4px;
+        border-top: 0.5px solid var(--border);
+        border-bottom: 0.5px solid var(--border);
+      }
+      .wb-stat { text-align: center; }
+      .wb-stat-label {
+        font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+        color: var(--text-2); margin-bottom: 4px;
+      }
+      .wb-stat-val {
+        font-size: 15px; font-weight: 600; color: var(--text-1);
+      }
+      .wb-detail-actions { display: flex; gap: 10px; }
+      .wb-detail-primary {
+        flex: 1; height: 48px;
+        background: var(--accent); color: var(--accent-on);
+        border: none; border-radius: 24px;
+        font-size: 15px; font-weight: 500;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+      }
+      .wb-detail-secondary {
+        width: 48px; height: 48px;
+        background: var(--surface-1); color: #e0413f;
+        border: 0.5px solid var(--border); border-radius: 50%;
+        cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .wb-detail-arrow {
+        position: absolute; top: 50%; transform: translateY(-50%);
+        width: 42px; height: 42px; border-radius: 50%;
+        background: rgba(0,0,0,0.4); color: #ffffff;
+        border: none; cursor: pointer; z-index: 5;
+        display: flex; align-items: center; justify-content: center;
+        backdrop-filter: blur(6px);
+        transition: opacity 0.18s;
+      }
+      .wb-detail-arrow.left  { left: 12px; }
+      .wb-detail-arrow.right { right: 12px; }
+      .wb-detail-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+      .wb-detail-dots {
+        position: absolute; bottom: 16px; left: 50%;
+        transform: translateX(-50%);
+        font-size: 12px; font-weight: 500;
+        background: rgba(0,0,0,0.45); color: #ffffff;
+        padding: 4px 10px; border-radius: 10px;
+        backdrop-filter: blur(6px);
+        z-index: 5;
       }
     `}</style>
   )
