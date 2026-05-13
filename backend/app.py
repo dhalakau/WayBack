@@ -7,7 +7,6 @@ from models import Item, Feedback
 from methods.cbr import CBRRecommender
 from methods.jitir import JITIRRecommender
 from methods.cia import CIARecommender
-import os
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -332,27 +331,11 @@ def feedback_stats():
     })
 
 # ---------------------------------------------------------------------------
-# POST /ai/describe  — AI-generated description for a place
+# (Removed) POST /ai/describe — descriptions are now baked into the seed,
+# and user-added places get whatever the user types in the notes field.
+# No live AI calls per request.
 # ---------------------------------------------------------------------------
 
-@app.route("/ai/describe", methods=["POST"])
-def ai_describe():
-    import anthropic
-    data = request.json
-    name = data.get("name", "")
-    category = data.get("category", "")
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-    message = client.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=100,
-        messages=[{
-            "role": "user",
-            "content": f'Write a short 1-2 sentence note about this place for a traveler\'s saved places app. Place: "{name}", Category: {category}. Be specific and practical. No fluff.'
-        }]
-    )
-    return jsonify({"description": message.content[0].text})
-
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     app.run(debug=True, port=8000)
