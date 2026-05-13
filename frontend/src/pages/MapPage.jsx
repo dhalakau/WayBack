@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
   Search, X, Plus, Compass, Bookmark, Sun, Moon, Trash2, MapPin,
   Coffee, UtensilsCrossed, Trees, Wine, Bed, ShoppingBag, Wrench,
-  Train, Landmark, Camera, Layers, Navigation, Locate, MoreHorizontal,
+  Train, Landmark, Camera, Navigation, Locate, MoreHorizontal,
   Sparkles, Cloud, Map as MapIcon, CirclePlus,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
@@ -46,13 +47,42 @@ const TILE_ATTRIB = '&copy; OpenStreetMap &copy; CARTO'
 // Leaflet marker helpers
 // -----------------------------------------------------------------------------
 
-function savedMarkerIcon(color) {
-  return L.divIcon({
-    className: 'wb-marker-icon',
-    html: `<div class="wb-pin" style="background:${color}"></div>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
+// Google-Maps-style "map type" icon: two stacked rhombi.
+function LayersIcon({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
+      <path d="M12 3 L21.5 9 L12 15 L2.5 9 Z" />
+      <path d="M2.5 14 L12 20 L21.5 14" />
+    </svg>
+  )
+}
+
+// Pre-compute one Leaflet DivIcon per category so each saved place shows its
+// actual lucide glyph (fork-and-knife for restaurants, coffee cup, etc.) on the map.
+const MARKER_ICONS = Object.fromEntries(
+  Object.entries(CATEGORIES).map(([key, cat]) => {
+    const Icon = cat.Icon
+    const iconSvg = renderToStaticMarkup(
+      <Icon size={14} color="#1a2433" strokeWidth={2.4} />
+    )
+    return [key, L.divIcon({
+      className: 'wb-marker-icon',
+      html: `<div class="wb-pin" style="background:${cat.color}">${iconSvg}</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 15],
+    })]
   })
+)
+const DEFAULT_MARKER_ICON = L.divIcon({
+  className: 'wb-marker-icon',
+  html: '<div class="wb-pin" style="background:#a0e6d4"></div>',
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+})
+
+function savedMarkerIcon(category) {
+  return MARKER_ICONS[category] || DEFAULT_MARKER_ICON
 }
 
 const youAreHereIcon = L.divIcon({
@@ -89,6 +119,31 @@ function CenterOnUser({ trigger, center }) {
   useEffect(() => {
     if (trigger > 0 && center) map.flyTo([center.lat, center.lng], 16, { duration: 0.6 })
   }, [trigger]) // eslint-disable-line
+  return null
+}
+
+// Pans / zooms the map to whatever matches the search query.
+// One match → flyTo that pin. Many matches → fit bounds. None / empty → no-op.
+function SearchFocus({ query, items }) {
+  const map = useMap()
+  useEffect(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return
+    const matches = items.filter(it =>
+      it.name.toLowerCase().includes(q) ||
+      (it.notes || '').toLowerCase().includes(q)
+    )
+    if (matches.length === 0) return
+    const timer = setTimeout(() => {
+      if (matches.length === 1) {
+        map.flyTo([matches[0].lat, matches[0].lng], 17, { duration: 0.6 })
+      } else {
+        const bounds = L.latLngBounds(matches.map(m => [m.lat, m.lng]))
+        map.fitBounds(bounds, { padding: [60, 60], maxZoom: 16, animate: true, duration: 0.6 })
+      }
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [query]) // eslint-disable-line
   return null
 }
 
@@ -181,8 +236,8 @@ export default function MapPage() {
       setNewPin(null)
     }
     setMode(next)
-    if (next === 'map')   { applyOffset(200) }
-    if (next === 'saved') { applyOffset(window.__sheetFull || 600) }
+    if (next === 'map')   applyOffset(SNAP_PEEK)
+    if (next === 'saved') applyOffset(getSnapFull())
   }
 
   // ---- pill click ------------------------------------------------------------
@@ -265,30 +320,34 @@ export default function MapPage() {
   }
 
   // ---- sheet drag logic -----------------------------------------------------
-  const SNAP_PEEK = 200
-  const SNAP_HALF = 380
+  // Drag bounds: bottom floor leaves the title row + 3 segmented buttons
+  // visible; top ceiling is full-screen. Within that range the sheet stays
+  // wherever the user releases — no snap points.
+  const SNAP_PEEK = 200          // default peek when entering Map mode
+  const SNAP_FLOOR = 130         // minimum visible (handle + header + segmented)
   function getSnapFull() {
-    // measured at runtime since phone height = viewport height
     return window.innerHeight - 56 - 28
   }
 
   function applyOffset(offsetFromBottom) {
-    window.__sheetFull = getSnapFull()
     const sheet = sheetRef.current
     if (!sheet) return
-    const sheetHeight = sheet.clientHeight
+    // The sheet's height is bound to viewport (height: calc(100% - 60px - 28px)),
+    // so we can compute the transform from window.innerHeight directly.
+    // Reading clientHeight can return 0 before first layout.
+    const sheetHeight = window.innerHeight - 88
     const ty = Math.max(0, sheetHeight - offsetFromBottom)
     sheet.style.transform = `translateY(${ty}px)`
-    const fabBottom = `${Math.max(72, offsetFromBottom + 16)}px`
-    if (fabsRef.current)    fabsRef.current.style.bottom = fabBottom
+    const fabBottom = `${Math.max(76, offsetFromBottom + 76)}px`
+    if (fabsRef.current)     fabsRef.current.style.bottom = fabBottom
     if (themeBtnRef.current) themeBtnRef.current.style.bottom = fabBottom
     dragRef.current.snap = offsetFromBottom
   }
 
-  useEffect(() => {
-    const t = setTimeout(() => applyOffset(SNAP_PEEK), 0)
-    return () => clearTimeout(t)
-  }, [])
+  // Initial position is handled entirely by CSS — the sheet's
+  // `transform: translateY(calc(100% - 200px))` and the FAB/theme
+  // `bottom: 276px` give a 200px peek state on first paint. JS only
+  // takes over once the user drags or switches modes.
 
   function onHandlePointerDown(e) {
     if (mode !== 'map' && mode !== 'saved') return
@@ -302,18 +361,17 @@ export default function MapPage() {
     if (!dragRef.current.dragging) return
     const SNAP_FULL = getSnapFull()
     const dy = dragRef.current.startY - e.clientY
-    const next = Math.max(56, Math.min(SNAP_FULL, dragRef.current.startOffset + dy))
+    const next = Math.max(SNAP_FLOOR, Math.min(SNAP_FULL, dragRef.current.startOffset + dy))
     applyOffset(next)
   }
   function onHandlePointerUp() {
     if (!dragRef.current.dragging) return
     dragRef.current.dragging = false
     sheetRef.current?.classList.remove('dragging')
+    // Free drag — stay wherever the user released, just enforce bounds.
     const SNAP_FULL = getSnapFull()
-    const points = [SNAP_PEEK, SNAP_HALF, SNAP_FULL]
-    const snap = dragRef.current.snap
-    const closest = points.reduce((a, b) => Math.abs(b - snap) < Math.abs(a - snap) ? b : a)
-    applyOffset(closest)
+    const clamped = Math.max(SNAP_FLOOR, Math.min(SNAP_FULL, dragRef.current.snap))
+    applyOffset(clamped)
   }
 
   // ---- render ----------------------------------------------------------------
@@ -338,12 +396,13 @@ export default function MapPage() {
             <TileLayer key={theme} url={tileUrl} attribution={TILE_ATTRIB} />
             <ClickToMovePin active={mode === 'add'} onPick={ll => setNewPin(ll)} />
             <CenterOnUser trigger={centerTrigger} center={userLoc} />
+            <SearchFocus query={search} items={savedItems} />
             <Marker position={[userLoc.lat, userLoc.lng]} icon={youAreHereIcon} />
             {savedItems.map(it => (
               <Marker
                 key={it.id}
                 position={[it.lat, it.lng]}
-                icon={savedMarkerIcon(CATEGORIES[it.category]?.color || '#a0e6d4')}
+                icon={savedMarkerIcon(it.category)}
                 eventHandlers={{ click: () => showToast(it.name) }}
               />
             ))}
@@ -394,7 +453,7 @@ export default function MapPage() {
           }}
           aria-label="Switch ranking method"
         >
-          <Layers size={20} />
+          <LayersIcon size={22} />
         </button>
 
         {/* ---- theme toggle (left edge) ------------------------------------ */}
@@ -584,10 +643,12 @@ function ScopedStyles() {
       .leaflet-control-attribution { display: none; }
 
       .wb-pin {
-        width: 24px; height: 24px; border-radius: 50%;
-        border: 2px solid rgba(0,0,0,0.35);
+        width: 30px; height: 30px; border-radius: 50%;
+        border: 2px solid rgba(0,0,0,0.4);
         box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+        display: flex; align-items: center; justify-content: center;
       }
+      .wb-pin svg { display: block; }
       .wb-you-dot {
         width: 14px; height: 14px; border-radius: 50%;
         background: #4285f4; border: 3px solid #fff;
@@ -651,7 +712,7 @@ function ScopedStyles() {
         transition: opacity 0.2s;
       }
       .wb-fabs {
-        position: absolute; right: 12px; bottom: 216px;
+        position: absolute; right: 12px; bottom: 276px;
         display: flex; flex-direction: column; gap: 10px; z-index: 500;
         transition: bottom 0.32s cubic-bezier(0.2,0.8,0.2,1), opacity 0.2s;
       }
@@ -661,7 +722,7 @@ function ScopedStyles() {
         color: var(--text-1);
       }
       .wb-theme {
-        position: absolute; left: 12px; bottom: 216px;
+        position: absolute; left: 12px; bottom: 276px;
         width: 50px; height: 50px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
         color: var(--accent); z-index: 500;
