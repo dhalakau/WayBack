@@ -12,6 +12,7 @@ import {
   Map as MapIcon, CirclePlus, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
+import ExplanationBreakdown from '../components/ExplanationBreakdown'
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -771,7 +772,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
 // Swipe left/right (or use the chevrons) to flip between saved places.
 // -----------------------------------------------------------------------------
 
-function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch }) {
+function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, userLoc }) {
   const idx = items.findIndex(i => i.id === itemId)
   const item = items[idx]
   const [tx, setTx] = useState(0)
@@ -861,6 +862,8 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch })
               <div className="wb-stat-val">{item.viewCount}</div>
             </div>
           </div>
+
+          <ExplanationBreakdown item={item} userLoc={userLoc} />
 
           <div className="wb-detail-actions">
             <button className="wb-detail-primary" onClick={() => onNavigate(item)}>
@@ -1699,6 +1702,7 @@ export default function MapPage() {
           <DetailPanel
             itemId={detailItemId}
             items={savedItems}
+            userLoc={userLoc}
             onClose={() => setDetailItemId(null)}
             onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); showToast(`Directions to ${item.name}`) }}
             onDelete={(id) => { deleteItem(id); setDetailItemId(null) }}
@@ -2237,6 +2241,150 @@ function ScopedStyles() {
         to   { opacity: 1; transform: translateY(0); }
       }
       .wb-app:has(.wb-proactive) .wb-search-area { top: 76px; }
+
+      /* ExplanationBreakdown — inline section (W4 brief; paper §4) ------ */
+      /* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
+      .wb-explain {
+        margin: 16px 0 0;
+        padding: 14px 14px 10px;
+        background: var(--surface-1);
+        border-radius: 16px;
+      }
+      .wb-explain-title {
+        font-size: 12px; font-weight: 600;
+        letter-spacing: 0.06em; text-transform: uppercase;
+        color: var(--text-2);
+        margin-bottom: 12px;
+      }
+      .wb-explain-list { display: flex; flex-direction: column; gap: 10px; }
+      .wb-explain-row {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 12px;
+      }
+      .wb-explain-row[data-strength="strong"] { background: rgba(160,230,212,0.10); }
+      .wb-explain-row[data-strength="none"]   { opacity: 0.5; }
+      .wb-explain-icon {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: rgba(160,230,212,0.15); color: var(--accent);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .wb-explain-row[data-strength="none"] .wb-explain-icon {
+        background: rgba(255,255,255,0.04); color: var(--text-2);
+      }
+      .wb-explain-body { flex: 1; min-width: 0; }
+      .wb-explain-label {
+        font-size: 13px; font-weight: 600; color: var(--text-1);
+        line-height: 1.25;
+      }
+      .wb-explain-detail {
+        font-size: 11.5px; color: var(--text-2); margin-top: 2px;
+        line-height: 1.35;
+      }
+      .wb-explain-meter { display: flex; gap: 3px; flex-shrink: 0; }
+      .wb-explain-meter span {
+        width: 5px; height: 14px; border-radius: 2px;
+        background: rgba(255,255,255,0.08);
+      }
+      .wb-explain-meter span[data-on="true"] { background: var(--accent); }
+      .wb-explain-trigger {
+        display: flex; align-items: center; gap: 6px;
+        margin: 14px auto 4px;
+        background: rgba(160,230,212,0.10);
+        border: 1px solid rgba(160,230,212,0.25);
+        color: var(--accent);
+        cursor: pointer;
+        font-size: 11.5px; font-weight: 500;
+        padding: 8px 14px; border-radius: 10px;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .wb-explain-trigger:hover {
+        background: rgba(160,230,212,0.18);
+        border-color: rgba(160,230,212,0.40);
+      }
+
+      /* AttributionModal — nested modal over DetailPanel ----------------- */
+      .wb-attr-backdrop {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.55);
+        backdrop-filter: blur(2px);
+        z-index: 1000;
+        display: flex; align-items: center; justify-content: center;
+        padding: 20px;
+        animation: wbAttrBackdropIn 0.2s ease-out;
+      }
+      .wb-attr-modal {
+        position: relative;
+        width: 100%; max-width: 420px;
+        max-height: 85vh; overflow-y: auto;
+        background: var(--surface-1);
+        border-radius: 18px;
+        padding: 24px 22px 20px;
+        box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+        color: var(--text-1);
+        animation: wbAttrModalIn 0.24s cubic-bezier(0.2,0.8,0.2,1);
+      }
+      .wb-attr-close {
+        position: absolute; top: 14px; right: 14px;
+        width: 32px; height: 32px; border-radius: 50%;
+        background: rgba(255,255,255,0.06); border: none;
+        color: var(--text-1); cursor: pointer;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .wb-attr-close:hover { background: rgba(255,255,255,0.12); }
+      .wb-attr-eyebrow {
+        font-size: 10.5px;
+        text-transform: uppercase; letter-spacing: 0.08em;
+        color: var(--accent);
+        margin-bottom: 6px;
+      }
+      .wb-attr-h {
+        margin: 0 0 14px;
+        font-size: 18px; font-weight: 600;
+        color: var(--text-1);
+      }
+      .wb-attr-lede {
+        font-size: 13px; line-height: 1.55;
+        color: var(--text-2);
+        margin: 0 0 16px;
+      }
+      .wb-attr-list {
+        list-style: none; padding: 0; margin: 0 0 16px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .wb-attr-list li {
+        padding: 10px 12px;
+        background: rgba(0,0,0,0.18);
+        border-radius: 10px;
+      }
+      .wb-attr-li-head {
+        font-size: 12.5px; color: var(--text-1);
+        margin-bottom: 4px;
+      }
+      .wb-attr-li-head b { color: var(--accent); font-weight: 600; }
+      .wb-attr-li-body {
+        font-size: 11.5px; color: var(--text-2);
+        line-height: 1.5;
+      }
+      .wb-attr-domain {
+        font-size: 11.5px; color: var(--text-2);
+        line-height: 1.55;
+        margin: 0;
+        padding: 12px;
+        background: rgba(160,230,212,0.06);
+        border-radius: 10px;
+      }
+      .wb-attr-domain b { color: var(--text-1); font-weight: 600; }
+      @keyframes wbAttrBackdropIn {
+        from { opacity: 0; }
+        to   { opacity: 1; }
+      }
+      @keyframes wbAttrModalIn {
+        from { opacity: 0; transform: translateY(12px) scale(0.96); }
+        to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
     `}</style>
   )
 }
