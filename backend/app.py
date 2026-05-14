@@ -107,16 +107,19 @@ def pick_reason(item, distance_m, months_old, weather):
 def item_to_dict(item):
     """Serialise an Item to the camelCase contract shape."""
     return {
-        "id":           item.id,
-        "name":         item.title,
-        "category":     item.category or "",
-        "lat":          item.latitude,
-        "lng":          item.longitude,
-        "savedAt":      to_ms(item.created_at),
-        "lastViewedAt": to_ms(item.last_viewed_at),
-        "viewCount":    item.view_count or 0,
-        "notes":        item.description or "",
-        "attachments":  [],   # not stored in DB yet — placeholder for v2
+        "id":            item.id,
+        "name":          item.title,
+        "category":      item.category or "",
+        "itemType":      item.item_type or "map_pin",
+        "lat":           item.latitude,
+        "lng":           item.longitude,
+        "eventDatetime": to_ms(item.event_datetime),
+        "tags":          [t.strip() for t in (item.tags or "").split(",") if t.strip()],
+        "savedAt":       to_ms(item.created_at),
+        "lastViewedAt":  to_ms(item.last_viewed_at),
+        "viewCount":     item.view_count or 0,
+        "notes":         item.description or "",
+        "attachments":   [],   # not stored in DB yet — placeholder for v2
     }
 
 
