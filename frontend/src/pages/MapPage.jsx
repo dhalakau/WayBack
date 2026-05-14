@@ -567,6 +567,142 @@ function contextBoost(category, weather, hour) {
 }
 
 // -----------------------------------------------------------------------------
+// Proactive notification — composite-signal evaluator (W4 brief)
+// -----------------------------------------------------------------------------
+
+/**
+ * Decide whether the top CIA recommendation deserves a proactive banner.
+ *
+ * Approximates Sappelli et al.'s four evaluation criteria (Section 4) as
+ * client-side signals:
+ *   - context relevance  -> spatial proximity (Section 4.3)
+ *   - document relevance -> category × time-of-day fit (Section 4.4)
+ *   - action prediction  -> CIA score from backend (Section 4.5, 6.3)
+ *   - diversity          -> low viewCount = under-surfaced item (Section 4.6)
+ *
+ * Domain note: paper studies desktop knowledge workers, we adapt to mobile
+ * tourism re-finding. Spatial proximity replaces the paper's "document I am
+ * currently writing" as the dominant context cue.
+ *
+ * Returns { reason, signals } or null. Reason codes are SHARED with the
+ * backend explanation vocabulary (see explainer logic) so UI text stays
+ * consistent across the banner, list explanations, and detail panel.
+ *
+ * @param {object} rec - { item, score, explanation } from /recommendations
+ * @param {object} userLoc - { lat, lng }
+ * @param {Date} now
+ * @returns {{ reason: string, signals: string[] }|null}
+ */
+function evaluateProactiveSignal(rec, userLoc, now) {
+  if (!rec || !rec.item) return null
+  const item = rec.item
+  const ciaScore = rec.score || 0
+
+  // Signal 1: action prediction (paper §4.5). CIA must produce a non-trivial
+  // activation. Threshold is the median of CIA scores observed empirically
+  // on the seed dataset; tune if dataset characteristics change.
+  const actionPredictionStrong = ciaScore >= 0.35
+  if (!actionPredictionStrong) return null
+
+  // Signal 2: context relevance via spatial proximity (paper §4.3).
+  // 500m ≈ 6-7 min walking, the practical "I could go now" radius.
+  const dist = item.lat && item.lng
+    ? haversineMeters(userLoc.lat, userLoc.lng, item.lat, item.lng)
+    : Infinity
+  const contextRelevant = dist < 500
+  const contextDistant  = dist > 800
+
+  // Signal 3: document relevance proxied by category × time-of-day match (§4.4).
+  // Maps tourism categories to opening-pattern hours.
+  const hour = now.getHours()
+  const cat = item.category
+  const timeFit =
+    (cat === 'restaurant' && ((hour >= 12 && hour < 14) || (hour >= 18 && hour < 22))) ||
+    (cat === 'cafe'       && hour >= 7  && hour < 11) ||
+    (cat === 'bar'        && hour >= 18) ||
+    (cat === 'museum'     && hour >= 10 && hour < 17) ||
+    (cat === 'park'       && hour >= 9  && hour < 19)
+
+  // Signal 4: diversity / re-finding value (§4.6 + paper §1 Elsweiler et al.).
+  // Items the user saved but rarely visited are exactly what re-finding
+  // systems exist to surface.
+  const views = item.viewCount || 0
+  const daysSinceSaved = item.savedAt ? (now.getTime() - item.savedAt) / 86400000 : 0
+  const daysSinceView  = item.lastViewedAt ? (now.getTime() - item.lastViewedAt) / 86400000 : 999
+  const underSurfaced  = views <= 1
+  const forgotten      = daysSinceView > 14
+  const oldSave        = daysSinceSaved > 60
+
+  // Compose firing patterns. Order matters — more specific patterns first.
+  // Each pattern requires action_prediction (already gated above) PLUS at least
+  // one other criterion firing, giving us a composite signal as the paper's
+  // four-criterion framework recommends (Section 7).
+  const signals = []
+  if (contextRelevant) signals.push('proximity')
+  if (timeFit)         signals.push('time_fit')
+  if (underSurfaced)   signals.push('under_surfaced')
+  if (forgotten)       signals.push('forgotten')
+
+  // Fire only if action_prediction is joined by at least one more signal.
+  // This is our composite-criterion gate.
+  if (signals.length === 0) return null
+
+  // Map composite signals to backend-vocabulary reason codes.
+  let reason
+  if (contextRelevant && views >= 2)              reason = 'nearby_frequent_view'
+  else if (contextRelevant && underSurfaced)      reason = 'nearby_unvisited'
+  else if (contextRelevant && timeFit)            reason = 'nearby_and_recent_save'
+  else if (contextRelevant)                       reason = 'nearby_and_recent_save'
+  else if (contextDistant && oldSave)             reason = 'saved_long_ago'
+  else if (timeFit)                               reason = 'matches_weather_indoor'  // closest existing code
+  else                                            reason = 'nearby_and_recent_save'
+
+  return { reason, signals }
+}
+
+/**
+ * Render text for a proactive banner. Reuses backend reason vocabulary so
+ * the banner stays consistent with in-list explanations and detail panel.
+ */
+function proactiveBannerText(item, reason, signals) {
+  const signalLine = signals && signals.length > 1
+    ? `Matches ${signals.length} of your current context signals`
+    : null
+
+  if (reason === 'nearby_frequent_view') {
+    return {
+      title: `${item.name} is right here`,
+      sub: signalLine || 'One of your most-viewed places',
+    }
+  }
+  if (reason === 'nearby_unvisited') {
+    return {
+      title: `${item.name} is nearby`,
+      sub: signalLine || "You saved this but haven't visited yet",
+    }
+  }
+  if (reason === 'nearby_and_recent_save') {
+    return {
+      title: `${item.name} is nearby`,
+      sub: signalLine || 'Worth a stop while you are here',
+    }
+  }
+  if (reason === 'saved_long_ago') {
+    return {
+      title: `Still want to visit ${item.name}?`,
+      sub: signalLine || 'Saved a long time ago — time to revisit?',
+    }
+  }
+  if (reason === 'matches_weather_indoor') {
+    return {
+      title: `${item.name} fits this time of day`,
+      sub: signalLine || 'Typically open right now',
+    }
+  }
+  return { title: item.name, sub: 'Recommended for this moment' }
+}
+
+// -----------------------------------------------------------------------------
 // SwipeableRow — horizontal-swipe-to-dismiss, vertical scrolls naturally,
 // pure tap (no movement past ~10px) fires onTap. Drag past ~100px dismisses.
 // -----------------------------------------------------------------------------
@@ -780,6 +916,15 @@ export default function MapPage() {
   const [weather, setWeather] = useState(null)             // { tempC, code, isDay, condition, label } | null
   const [currentTime, setCurrentTime] = useState(new Date())
 
+  // Proactive notification (W4 project brief: "proactively recommend ... based on current situation").
+  // Surfaces the top CIA recommendation when contextual signals reinforce it.
+  // See paper Section 6.3 (Action Prediction) for why CIA is the chosen method here.
+  const [proactiveAlert, setProactiveAlert] = useState(null)  // { item, reason, score, signals } or null
+  const [dismissedAlerts, setDismissedAlerts] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('wb_dismissed_alerts') || '[]')) }
+    catch { return new Set() }
+  })
+
   const [toast, setToast] = useState(null)
   const [centerTrigger, setCenterTrigger] = useState(0)
 
@@ -860,6 +1005,56 @@ export default function MapPage() {
 
   // Derived: the route data for the currently-selected travel mode.
   const routeData = routesByMode[travelMode] ?? null
+
+  // Proactive notification polling (W4 project brief requirement).
+  // Calls the existing /recommendations endpoint with method=cia every 30s and
+  // evaluates whether the top-ranked item satisfies the composite signal gate
+  // defined by evaluateProactiveSignal() above. CIA is selected per paper §6.3
+  // (best at action prediction).
+  useEffect(() => {
+    let cancelled = false
+
+    async function evaluate() {
+      try {
+        const params = new URLSearchParams({
+          userId: USER_ID,
+          lat: userLoc.lat,
+          lng: userLoc.lng,
+          method: 'cia',
+        })
+        const res = await fetch(`${API}/recommendations?${params}`)
+        const data = await res.json()
+        if (cancelled || !Array.isArray(data) || data.length === 0) {
+          setProactiveAlert(null)
+          return
+        }
+
+        const now = new Date()
+        // Walk the ranked list — first item that satisfies the composite gate
+        // AND is not in the user's dismissed set wins the banner slot.
+        for (const rec of data) {
+          if (dismissedAlerts.has(rec.item.id)) continue
+          const result = evaluateProactiveSignal(rec, userLoc, now)
+          if (result) {
+            setProactiveAlert({
+              item: rec.item,
+              reason: result.reason,
+              score: rec.score,
+              signals: result.signals,
+            })
+            return
+          }
+        }
+        setProactiveAlert(null)
+      } catch {
+        setProactiveAlert(null)  // network failure — clear stale alert
+      }
+    }
+
+    evaluate()
+    const id = setInterval(evaluate, 30_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [savedItems, userLoc.lat, userLoc.lng, dismissedAlerts])
 
   async function fetchSaved() {
     try {
@@ -978,6 +1173,18 @@ export default function MapPage() {
       next.add(itemId)
       return next
     })
+  }
+
+  function dismissProactiveAlert() {
+    if (!proactiveAlert) return
+    const id = proactiveAlert.item.id
+    setDismissedAlerts(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      try { localStorage.setItem('wb_dismissed_alerts', JSON.stringify([...next])) } catch {}
+      return next
+    })
+    setProactiveAlert(null)
   }
 
   // ---- directions FAB --------------------------------------------------------
@@ -1130,6 +1337,36 @@ export default function MapPage() {
             )}
           </MapContainer>
         </div>
+
+        {/* ---- proactive notification (W4 brief; paper §6.3 method choice) - */}
+        {proactiveAlert && mode === 'map' && (() => {
+          const t = proactiveBannerText(
+            proactiveAlert.item,
+            proactiveAlert.reason,
+            proactiveAlert.signals,
+          )
+          return (
+            <div
+              className="wb-proactive"
+              onClick={() => openDetail(proactiveAlert.item.id)}
+              role="button"
+              tabIndex={0}
+            >
+              <Sparkles size={18} aria-hidden="true" />
+              <div className="wb-proactive-text">
+                <div className="wb-proactive-title">{t.title}</div>
+                <div className="wb-proactive-sub">{t.sub}</div>
+              </div>
+              <button
+                className="wb-proactive-x"
+                onClick={(e) => { e.stopPropagation(); dismissProactiveAlert() }}
+                aria-label="Dismiss"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )
+        })()}
 
         {/* ---- search + pills (hidden in saved/add modes) ------------------ */}
         <div className="wb-search-area">
@@ -1496,6 +1733,12 @@ function ScopedStyles() {
         --bg: #eef1f5; --surface-1: #ffffff; --surface-2: #ffffff; --surface-3: #ffffff;
         --text-1: #202124; --text-2: #5f6368; --border: rgba(0,0,0,0.08); --handle: #c4c7c5;
         --accent: #137c6e; --accent-on: #ffffff; --accent-bg: rgba(19,124,110,0.10); --status: #202124;
+      }
+
+      .wb-app {
+        max-width: 440px;
+        margin: 0 auto;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.04);
       }
 
       .wb-map-wrap { position: absolute; inset: 0; }
@@ -1875,6 +2118,9 @@ function ScopedStyles() {
         overflow-y: auto;
         touch-action: pan-y;
       }
+      @media (hover: hover) and (pointer: fine) {
+        .wb-detail-page { touch-action: auto !important; }
+      }
       .wb-detail-hero {
         min-height: 240px; padding: 36px 22px 22px;
         display: flex; flex-direction: column; justify-content: flex-end;
@@ -1959,6 +2205,35 @@ function ScopedStyles() {
         backdrop-filter: blur(6px);
         z-index: 5;
       }
+
+      /* Proactive notification banner (W4 brief; paper §6.3) ------------- */
+      .wb-proactive {
+        position: absolute; top: 12px; left: 12px; right: 12px;
+        background: var(--accent); color: var(--accent-on);
+        border-radius: 16px; padding: 12px 14px;
+        display: flex; align-items: center; gap: 12px;
+        z-index: 760;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+        cursor: pointer;
+        animation: wbProactiveIn 0.32s cubic-bezier(0.2,0.8,0.2,1);
+      }
+      .wb-proactive svg { flex-shrink: 0; }
+      .wb-proactive-text { flex: 1; min-width: 0; }
+      .wb-proactive-title { font-size: 14px; font-weight: 600; line-height: 1.25; }
+      .wb-proactive-sub { font-size: 12px; opacity: 0.78; margin-top: 2px; line-height: 1.3; }
+      .wb-proactive-x {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: rgba(0,0,0,0.12); border: none; cursor: pointer;
+        color: var(--accent-on);
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .wb-proactive-x:hover { background: rgba(0,0,0,0.2); }
+      @keyframes wbProactiveIn {
+        from { opacity: 0; transform: translateY(-12px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .wb-app:has(.wb-proactive) .wb-search-area { top: 76px; }
     `}</style>
   )
 }
