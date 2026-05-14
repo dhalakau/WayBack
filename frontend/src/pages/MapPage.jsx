@@ -716,6 +716,8 @@ function SwipeableRow({ onTap, onDismiss, children }) {
     startRef.current = { x: e.clientX, y: e.clientY, locked: null, moved: false }
   }
   function onPointerMove(e) {
+    // Desktop mouse should not trigger swipe — gesture is touch/pen only.
+    if (e.pointerType === 'mouse') return
     const dx = e.clientX - startRef.current.x
     const dy = e.clientY - startRef.current.y
     if (startRef.current.locked === null) {
@@ -789,6 +791,7 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch })
     startRef.current = { x: e.clientX, y: e.clientY, locked: null }
   }
   function onPointerMove(e) {
+    if (e.pointerType === 'mouse') return
     const dx = e.clientX - startRef.current.x
     const dy = e.clientY - startRef.current.y
     if (startRef.current.locked === null) {
