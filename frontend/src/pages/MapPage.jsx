@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
+import MethodCompare from '../components/MethodCompare'
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -922,6 +923,9 @@ export default function MapPage() {
   const [weather, setWeather] = useState(null)             // { tempC, code, isDay, condition, label } | null
   const [currentTime, setCurrentTime] = useState(new Date())
 
+  // Compare-methods view in the Saved tab (W4 demo feature; paper §5)
+  const [compareMode, setCompareMode] = useState(false)
+
   // Proactive notification (W4 project brief: "proactively recommend ... based on current situation").
   // Surfaces the top CIA recommendation when contextual signals reinforce it.
   // See paper Section 6.3 (Action Prediction) for why CIA is the chosen method here.
@@ -1568,8 +1572,24 @@ export default function MapPage() {
             <>
           <div className="wb-sheet-header">
             <div className="wb-sheet-title">{sheetTitle}</div>
+            {mode === 'saved' && (
+              <button
+                type="button"
+                className="wb-compare-toggle"
+                onClick={() => setCompareMode(m => !m)}
+                aria-pressed={compareMode}
+              >
+                {compareMode ? 'List view' : 'Compare methods'}
+              </button>
+            )}
           </div>
 
+          {mode === 'saved' && compareMode ? (
+            <div className="wb-list">
+              <MethodCompare />
+            </div>
+          ) : (
+            <>
           {/* segmented control swaps content by mode */}
           <div className="wb-segmented">
             {mode === 'map' ? (
@@ -1641,6 +1661,8 @@ export default function MapPage() {
               )
             })}
           </div>
+          </>
+          )}
             </>
           )}
         </div>
@@ -2384,6 +2406,159 @@ function ScopedStyles() {
       @keyframes wbAttrModalIn {
         from { opacity: 0; transform: translateY(12px) scale(0.96); }
         to   { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      /* Method Compare toggle button --------------------------------------- */
+      .wb-compare-toggle {
+        background: rgba(160,230,212,0.10);
+        border: 1px solid rgba(160,230,212,0.25);
+        color: var(--accent);
+        cursor: pointer;
+        font-size: 11.5px; font-weight: 500;
+        padding: 6px 12px; border-radius: 9px;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .wb-compare-toggle:hover {
+        background: rgba(160,230,212,0.18);
+        border-color: rgba(160,230,212,0.40);
+      }
+      .wb-compare-toggle[aria-pressed="true"] {
+        background: var(--accent); color: var(--accent-on);
+        border-color: var(--accent);
+      }
+
+      /* MethodCompare component ------------------------------------------- */
+      /* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
+      .wb-compare {
+        padding: 8px 0 16px;
+      }
+      .wb-compare-header {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 0 4px 12px;
+      }
+      .wb-compare-title {
+        font-size: 13px; font-weight: 600;
+        color: var(--text-1);
+        letter-spacing: 0.02em;
+      }
+      .wb-compare-info {
+        display: flex; align-items: center; gap: 5px;
+        background: transparent; border: none; cursor: pointer;
+        color: var(--accent);
+        font-size: 11px;
+        padding: 4px 8px; border-radius: 8px;
+        transition: background 0.15s;
+      }
+      .wb-compare-info:hover { background: rgba(160,230,212,0.10); }
+
+      .wb-compare-context-strip {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 8px; padding: 0 4px 14px;
+      }
+      .wb-compare-context-btn {
+        display: flex; flex-direction: column; align-items: center; gap: 4px;
+        padding: 10px 6px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        border-radius: 12px;
+        cursor: pointer;
+        color: var(--text-2);
+        transition: all 0.15s;
+      }
+      .wb-compare-context-btn[data-active="true"] {
+        background: rgba(160,230,212,0.12);
+        border-color: rgba(160,230,212,0.40);
+        color: var(--text-1);
+      }
+      .wb-compare-context-btn[data-active="true"] .wb-compare-context-icon {
+        color: var(--accent);
+      }
+      .wb-compare-context-icon {
+        color: var(--text-2);
+      }
+      .wb-compare-context-label {
+        font-size: 12px; font-weight: 600;
+      }
+      .wb-compare-context-sub {
+        font-size: 10px; opacity: 0.75;
+        text-align: center; line-height: 1.2;
+      }
+
+      .wb-compare-grid {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+      }
+      .wb-compare-col {
+        background: var(--surface-1);
+        border-radius: 12px;
+        padding: 10px 8px 8px;
+        min-height: 200px;
+        display: flex; flex-direction: column;
+      }
+      .wb-compare-col-head {
+        text-align: center; padding-bottom: 10px;
+        border-bottom: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 8px;
+      }
+      .wb-compare-col-name {
+        font-size: 13px; font-weight: 700;
+        color: var(--accent);
+        letter-spacing: 0.04em;
+      }
+      .wb-compare-col-section {
+        font-size: 10px; color: var(--text-2);
+        margin-top: 2px;
+      }
+      .wb-compare-col-body {
+        flex: 1; display: flex; flex-direction: column; gap: 6px;
+      }
+      .wb-compare-loading {
+        display: flex; justify-content: center; align-items: center;
+        padding: 20px 0;
+        color: var(--text-2);
+      }
+      .wb-compare-spin {
+        animation: wbCompareSpin 1s linear infinite;
+      }
+      @keyframes wbCompareSpin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+      .wb-compare-empty {
+        text-align: center; font-size: 11px;
+        color: var(--text-2); padding: 20px 0;
+      }
+      .wb-compare-item {
+        display: flex; gap: 6px; align-items: flex-start;
+        padding: 6px 4px;
+      }
+      .wb-compare-item-rank {
+        width: 18px; height: 18px; border-radius: 50%;
+        background: rgba(160,230,212,0.12);
+        color: var(--accent);
+        font-size: 10px; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .wb-compare-item-body { flex: 1; min-width: 0; }
+      .wb-compare-item-name {
+        font-size: 11.5px; font-weight: 500;
+        color: var(--text-1);
+        line-height: 1.25;
+        overflow: hidden; text-overflow: ellipsis;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      }
+      .wb-compare-item-score {
+        font-size: 10px; color: var(--text-2);
+        margin-top: 2px;
+      }
+      .wb-compare-note {
+        font-size: 10.5px;
+        color: var(--text-2);
+        font-style: italic;
+        text-align: center;
+        padding: 12px 8px 4px;
+        line-height: 1.5;
       }
     `}</style>
   )
