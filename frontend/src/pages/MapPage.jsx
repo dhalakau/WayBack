@@ -7,7 +7,9 @@ import {
   Search, X, Plus, Compass, Bookmark, Sun, Moon, Trash2, MapPin,
   Coffee, UtensilsCrossed, Trees, Wine, Bed, ShoppingBag, Wrench,
   Train, Landmark, Camera, Navigation, Locate, MoreHorizontal,
-  Sparkles, Cloud, Map as MapIcon, CirclePlus, ChevronLeft, ChevronRight,
+  Sparkles, Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
+  Footprints, Bike, Car, ArrowLeft,
+  Map as MapIcon, CirclePlus, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
 
@@ -173,8 +175,8 @@ function timeAgo(ms) {
   const months = Math.floor(days / 30); return `${months} month${months > 1 ? 's' : ''} ago`
 }
 
-// Straight-line distance in metres between two coords (good enough for the
-// "1.2 km away" navigation banner — turn-by-turn routing is out of scope).
+// Straight-line distance in metres between two coords (kept as a fallback for
+// when the routing API is unreachable).
 function haversineMeters(lat1, lng1, lat2, lng2) {
   const R = 6_371_000
   const toRad = d => d * Math.PI / 180
@@ -182,6 +184,386 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   const dLng = toRad(lng2 - lng1)
   const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
   return 2 * R * Math.asin(Math.sqrt(a))
+}
+
+// Fetch a real route from the appropriate backend for the requested mode.
+// - foot / bike / car → OSRM public demo (free, no API key)
+// - transit           → Transitous MOTIS 2 API (free; community-run, see policy)
+// Returns a unified { coords, distance, duration, transfers?, transitLines? }
+// shape or null if the request fails.
+async function fetchRoute(from, to, mode) {
+  if (mode === 'transit') return fakeTransitRoute(from, to)
+  return fetchOsrmRoute(from, to, mode)
+}
+
+async function fetchOsrmRoute(from, to, mode) {
+  // The router.project-osrm.org demo only runs the CAR profile — all modes
+  // get the same response. The FOSSGIS routing.openstreetmap.de service
+  // runs THREE separate OSRM instances, one per profile, addressed by URL
+  // prefix. Same v5 API otherwise.
+  //
+  //   foot → /routed-foot/route/v1/walking/…
+  //   bike → /routed-bike/route/v1/cycling/…
+  //   car  → /routed-car/route/v1/driving/…
+  //
+  // Rate limit: ~1 req/sec per client, no commercial use.
+  const cfg = {
+    foot: { prefix: 'routed-foot', name: 'walking' },
+    bike: { prefix: 'routed-bike', name: 'cycling' },
+    car:  { prefix: 'routed-car',  name: 'driving' },
+  }[mode] || { prefix: 'routed-foot', name: 'walking' }
+
+  const url = `https://routing.openstreetmap.de/${cfg.prefix}/route/v1/${cfg.name}/`
+    + `${from.lng},${from.lat};${to.lng},${to.lat}`
+    + `?overview=full&geometries=geojson`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    const route = data?.routes?.[0]
+    if (!route) return null
+    const coords = route.geometry.coordinates.map(([lng, lat]) => [lat, lng])
+    return { coords, distance: route.distance, duration: route.duration }
+  } catch {
+    return null
+  }
+}
+
+// Public transport: hand-curated Munich transit data, originating from
+// Hauptbahnhof. Each "area" is a destination zone with a realistic MVV
+// itinerary attached (lines, transfers, in-vehicle time). Final-mile walk
+// is computed from the area's finalStop to the actual destination.
+//
+// Why not live API? Transitous (the free MOTIS instance) is community-run
+// with limited resources and isn't reliable enough for a demo. For real
+// production deployment, self-host MOTIS or use a paid provider.
+
+const MUNICH_TRANSIT_AREAS = [
+  // Walking-distance from Hbf — show transit anyway for completeness
+  { id: 'at-hbf',         centerLat: 48.1402, centerLng: 11.5586, radius: 350,
+    finalStop: { name: 'Hauptbahnhof', lat: 48.1402, lng: 11.5586 },
+    rideMin: 0,  lines: [],            transfers: 0 },
+
+  // City center via S-Bahn Stammstrecke (Hbf → Marienplatz)
+  { id: 'center',         centerLat: 48.1374, centerLng: 11.5755, radius: 700,
+    finalStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 },
+    rideMin: 4,  lines: ['S1','S2','S4','S6','S7','S8'], transfers: 0 },
+
+  // Odeonsplatz / Café Luitpold corridor — U4/U5 from Hbf
+  { id: 'odeonsplatz',    centerLat: 48.1422, centerLng: 11.5772, radius: 350,
+    finalStop: { name: 'Odeonsplatz', lat: 48.1422, lng: 11.5772 },
+    rideMin: 5,  lines: ['U4','U5'],   transfers: 0 },
+
+  // Museum quarter (Alte Pinakothek, Lenbachhaus) — U2 to Königsplatz
+  { id: 'museum-quarter', centerLat: 48.1476, centerLng: 11.5680, radius: 500,
+    finalStop: { name: 'Königsplatz', lat: 48.1469, lng: 11.5658 },
+    rideMin: 4,  lines: ['U2','U8'],   transfers: 0 },
+
+  // Glockenbach (Man vs Machine, Zephyr Bar) — U1/U2 via Sendlinger Tor
+  { id: 'glockenbach',    centerLat: 48.1325, centerLng: 11.5720, radius: 500,
+    finalStop: { name: 'Fraunhoferstraße', lat: 48.1303, lng: 11.5717 },
+    rideMin: 6,  lines: ['U1','U2'],   transfers: 1,
+    transferStop: { name: 'Sendlinger Tor', lat: 48.1340, lng: 11.5670 } },
+
+  // Augustiner / Hackerbrücke — 1 S-Bahn stop west
+  { id: 'augustiner',     centerLat: 48.1410, centerLng: 11.5500, radius: 500,
+    finalStop: { name: 'Hackerbrücke', lat: 48.1410, lng: 11.5485 },
+    rideMin: 2,  lines: ['S1','S2','S3','S4','S6','S7','S8'], transfers: 0 },
+
+  // Deutsches Museum — Tram 16 from Hbf
+  { id: 'deutsches-museum', centerLat: 48.1299, centerLng: 11.5832, radius: 400,
+    finalStop: { name: 'Deutsches Museum', lat: 48.1316, lng: 11.5800 },
+    rideMin: 8,  lines: ['Tram 16'],   transfers: 0 },
+
+  // Schwabing south + Eisbach — S-Bahn + U-Bahn via Marienplatz
+  { id: 'eisbach',        centerLat: 48.1500, centerLng: 11.5860, radius: 600,
+    finalStop: { name: 'Universität', lat: 48.1502, lng: 11.5808 },
+    rideMin: 9,  lines: ['U3','U6'],   transfers: 1,
+    transferStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 } },
+
+  // English Garden / Chinese Tower — U3/U6 via Marienplatz to Münchner Freiheit
+  { id: 'english-garden', centerLat: 48.1620, centerLng: 11.5970, radius: 1500,
+    finalStop: { name: 'Münchner Freiheit', lat: 48.1620, lng: 11.5870 },
+    rideMin: 12, lines: ['U3','U6'],   transfers: 1,
+    transferStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 } },
+
+  // Tantris area — U6 further north
+  { id: 'tantris',        centerLat: 48.1683, centerLng: 11.5938, radius: 400,
+    finalStop: { name: 'Dietlindenstraße', lat: 48.1715, lng: 11.5949 },
+    rideMin: 15, lines: ['U6'],        transfers: 1,
+    transferStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 } },
+
+  // Olympia / BMW Welt / BMW Museum — U3 via Sendlinger Tor
+  { id: 'olympia-bmw',    centerLat: 48.1762, centerLng: 11.5552, radius: 700,
+    finalStop: { name: 'Olympiazentrum', lat: 48.1796, lng: 11.5510 },
+    rideMin: 16, lines: ['U3'],        transfers: 1,
+    transferStop: { name: 'Sendlinger Tor', lat: 48.1340, lng: 11.5670 } },
+
+  // Nymphenburg — Tram 17 direct from Hbf
+  { id: 'nymphenburg',    centerLat: 48.1590, centerLng: 11.5050, radius: 700,
+    finalStop: { name: 'Schloss Nymphenburg', lat: 48.1607, lng: 11.5085 },
+    rideMin: 17, lines: ['Tram 17'],   transfers: 0 },
+
+  // Au (Wirtshaus in der Au) — S-Bahn + walk
+  { id: 'au',             centerLat: 48.1283, centerLng: 11.5876, radius: 400,
+    finalStop: { name: 'Rosenheimer Platz', lat: 48.1278, lng: 11.5917 },
+    rideMin: 6,  lines: ['S1','S2','S4','S6','S7','S8'], transfers: 0 },
+]
+
+// Walking pace (m/min) used to estimate final-mile time.
+const WALK_PACE_M_PER_MIN = 80
+
+// Fake but realistic transit route built from MUNICH_TRANSIT_AREAS.
+// Always works. Returns the same shape as fetchOsrmRoute.
+function fakeTransitRoute(from, to) {
+  // Find the area whose center is closest to the destination (and which
+  // contains the destination within its radius).
+  let best = null
+  let bestDist = Infinity
+  for (const a of MUNICH_TRANSIT_AREAS) {
+    const d = haversineMeters(a.centerLat, a.centerLng, to.lat, to.lng)
+    if (d <= a.radius && d < bestDist) { best = a; bestDist = d }
+  }
+
+  // Special case: destination is right at Hbf — nothing to ride.
+  if (best && best.id === 'at-hbf') {
+    return {
+      coords: [[from.lat, from.lng], [to.lat, to.lng]],
+      distance: null,
+      duration: 60,
+      transfers: 0,
+      transitLines: [],
+      legs: [{ mode: 'WALK', minutes: 1, label: 'Walk' }],
+    }
+  }
+
+  // Generic fallback for destinations outside any defined area
+  if (!best) {
+    const distM = haversineMeters(from.lat, from.lng, to.lat, to.lng)
+    const rideMin = Math.max(5, Math.round(distM / 350))   // ~21 km/h average
+    return {
+      coords: [
+        [from.lat, from.lng],
+        [(from.lat + to.lat) / 2, (from.lng + to.lng) / 2],
+        [to.lat, to.lng],
+      ],
+      distance: null,
+      duration: (rideMin + 4) * 60,
+      transfers: 0,
+      transitLines: ['Bus'],
+      legs: [
+        { mode: 'WALK',   minutes: 2,        label: 'Walk to stop' },
+        { mode: 'TRANSIT', minutes: rideMin, label: 'Ride',  line: 'Bus' },
+        { mode: 'WALK',   minutes: 2,        label: 'Walk to destination' },
+      ],
+    }
+  }
+
+  // Build the route from the matched area
+  const coords = [[from.lat, from.lng]]
+  if (best.transfers > 0 && best.transferStop) {
+    coords.push([best.transferStop.lat, best.transferStop.lng])
+  }
+  coords.push([best.finalStop.lat, best.finalStop.lng])
+  coords.push([to.lat, to.lng])
+
+  const finalWalkMin = Math.max(1, Math.round(
+    haversineMeters(best.finalStop.lat, best.finalStop.lng, to.lat, to.lng) / WALK_PACE_M_PER_MIN
+  ))
+  const boardingMin = 3                            // walking through Hbf to platform
+  const transferMin = best.transfers > 0 ? 3 : 0
+  const totalMin = boardingMin + best.rideMin + transferMin + finalWalkMin
+
+  // Build per-leg breakdown for the in-sheet step list
+  const legs = []
+  legs.push({ mode: 'WALK', minutes: boardingMin, label: `Walk to ${best.finalStop.name === 'Hauptbahnhof' ? 'platform' : 'platform'}` })
+  if (best.transfers > 0 && best.transferStop) {
+    const firstRide = Math.ceil(best.rideMin / 2)
+    legs.push({
+      mode: 'TRANSIT', minutes: firstRide,
+      label: `Take ${best.lines[0]} to ${best.transferStop.name}`,
+      line: best.lines[0],
+    })
+    legs.push({ mode: 'TRANSFER', minutes: transferMin, label: `Transfer at ${best.transferStop.name}` })
+    const secondRide = best.rideMin - firstRide
+    legs.push({
+      mode: 'TRANSIT', minutes: secondRide,
+      label: `Take ${best.lines[best.lines.length - 1] || best.lines[0]} to ${best.finalStop.name}`,
+      line: best.lines[best.lines.length - 1] || best.lines[0],
+    })
+  } else {
+    legs.push({
+      mode: 'TRANSIT', minutes: best.rideMin,
+      label: `Take ${best.lines[0]} to ${best.finalStop.name}`,
+      line: best.lines[0],
+    })
+  }
+  legs.push({ mode: 'WALK', minutes: finalWalkMin, label: 'Walk to destination' })
+
+  return {
+    coords,
+    distance: null,
+    duration: totalMin * 60,
+    transfers: best.transfers,
+    transitLines: best.lines.slice(0, 2),
+    legs,
+  }
+}
+
+// Format the banner text per mode:
+//   foot    → "12 min walk · 850 m"
+//   bike    → "4 min bike · 850 m"
+//   car     → "3 min drive · 1.2 km"
+//   transit → "18 min · via U2 · 1 transfer"
+function formatRouteSummary(route, mode) {
+  if (!route) return ''
+  const mins = Math.max(1, Math.round(route.duration / 60))
+
+  if (mode === 'transit') {
+    const linesStr = route.transitLines?.length
+      ? ` · via ${route.transitLines.join(', ')}` : ''
+    const xferStr = route.transfers
+      ? ` · ${route.transfers} transfer${route.transfers > 1 ? 's' : ''}` : ''
+    return `${mins} min${linesStr}${xferStr}`
+  }
+
+  const dist = route.distance == null ? '' : (
+    route.distance < 1000
+      ? `${Math.round(route.distance)} m`
+      : `${(route.distance / 1000).toFixed(1)} km`
+  )
+  const verb = mode === 'bike' ? 'bike' : (mode === 'car' ? 'drive' : 'walk')
+  return `${mins} min ${verb}${dist ? ' · ' + dist : ''}`
+}
+
+// Travel-mode definitions: id, lucide icon, accessible label.
+const TRAVEL_MODES = [
+  { id: 'foot',    Icon: Footprints, label: 'Walk' },
+  { id: 'bike',    Icon: Bike,       label: 'Bike' },
+  { id: 'car',     Icon: Car,        label: 'Drive' },
+  { id: 'transit', Icon: Train,      label: 'Transit' },
+]
+
+// -----------------------------------------------------------------------------
+// Weather + time context (Open-Meteo)
+// -----------------------------------------------------------------------------
+
+// Fetch current weather from Open-Meteo (free, no API key). Pinned to Munich
+// so the demo is reproducible regardless of where the user actually is.
+// Returns { tempC, code, isDay, condition, label } or null on failure.
+async function fetchWeather(lat, lng) {
+  const url = `https://api.open-meteo.com/v1/forecast`
+    + `?latitude=${lat}&longitude=${lng}`
+    + `&current=temperature_2m,weather_code,is_day`
+    + `&timezone=Europe%2FBerlin`
+  try {
+    const res = await fetch(url)
+    if (!res.ok) return null
+    const data = await res.json()
+    const c = data?.current
+    if (!c) return null
+    const code = c.weather_code
+    return {
+      tempC: Math.round(c.temperature_2m),
+      code,
+      isDay: c.is_day === 1,
+      condition: wmoToCondition(code),
+      label: wmoToLabel(code),
+    }
+  } catch {
+    return null
+  }
+}
+
+// WMO weather codes → simple bucket the rest of the app reasons about.
+function wmoToCondition(code) {
+  if (code == null) return 'clear'
+  if (code >= 95)                              return 'storm'
+  if (code === 71 || code === 73 || code === 75 || code === 77
+      || code === 85 || code === 86)           return 'snow'
+  if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain'
+  if (code === 45 || code === 48)              return 'fog'
+  if (code === 1 || code === 2 || code === 3)  return 'clouds'
+  return 'clear'
+}
+
+// Human-readable label for the weather pill tooltip.
+function wmoToLabel(code) {
+  const map = {
+    0:'Clear', 1:'Mainly clear', 2:'Partly cloudy', 3:'Overcast',
+    45:'Fog', 48:'Freezing fog',
+    51:'Light drizzle', 53:'Drizzle', 55:'Heavy drizzle',
+    61:'Light rain', 63:'Rain', 65:'Heavy rain',
+    71:'Light snow', 73:'Snow', 75:'Heavy snow', 77:'Snow grains',
+    80:'Light showers', 81:'Showers', 82:'Heavy showers',
+    85:'Snow showers', 86:'Heavy snow showers',
+    95:'Thunderstorm', 96:'Thunderstorm w/ hail', 99:'Thunderstorm w/ hail',
+  }
+  return map[code] || 'Clear'
+}
+
+// Pick a lucide icon component for a (condition, isDay) pair.
+function weatherIconFor(condition, isDay) {
+  if (condition === 'rain')   return CloudRain
+  if (condition === 'snow')   return CloudSnow
+  if (condition === 'storm')  return CloudLightning
+  if (condition === 'fog')    return CloudFog
+  if (condition === 'clouds') return Cloud
+  return isDay ? Sun : Moon
+}
+
+// Context-aware score multiplier: nudges saved-item ranking based on weather
+// + time-of-day so the Map view "feels alive" — cafés in the morning, bars at
+// night, museums when it rains, parks on sunny afternoons. Multipliers are
+// gentle (typically 0.5–1.6) so the backend's CIA/CBR/JITIR ranking still
+// drives the broad order — context only reorders within the top results.
+function contextBoost(category, weather, hour) {
+  let b = 1.0
+  const indoor   = ['museum','cafe','restaurant','bar','shopping','accommodation','services'].includes(category)
+  const isRain   = weather?.condition === 'rain' || weather?.condition === 'storm'
+  const isSnow   = weather?.condition === 'snow'
+  const isClear  = weather?.condition === 'clear' && weather?.isDay
+  const isDark   = weather && !weather.isDay
+
+  // Weather effects
+  if (isRain || isSnow) {
+    if (indoor)                  b *= 1.4
+    if (category === 'park')     b *= 0.4
+    if (category === 'attraction') b *= 0.7
+  } else if (isClear) {
+    if (category === 'park')       b *= 1.4
+    if (category === 'attraction') b *= 1.2
+  }
+  if (isDark && category === 'park') b *= 0.5
+
+  // Time-of-day effects
+  if (hour >= 6 && hour < 11) {                    // morning
+    if (category === 'cafe')       b *= 1.5
+    if (category === 'bar')        b *= 0.3
+    if (category === 'attraction') b *= 1.1
+  } else if (hour >= 11 && hour < 14) {            // lunch
+    if (category === 'restaurant') b *= 1.4
+    if (category === 'bar')        b *= 0.5
+  } else if (hour >= 14 && hour < 17) {            // afternoon
+    if (category === 'museum')     b *= 1.3
+    if (category === 'attraction') b *= 1.2
+    if (category === 'shopping')   b *= 1.2
+    if (category === 'bar')        b *= 0.6
+  } else if (hour >= 17 && hour < 21) {            // evening
+    if (category === 'restaurant') b *= 1.4
+    if (category === 'bar')        b *= 1.2
+    if (category === 'cafe')       b *= 0.7
+  } else if (hour >= 21 || hour < 2) {             // night
+    if (category === 'bar')        b *= 1.6
+    if (category === 'restaurant') b *= 0.8
+    if (category === 'museum')     b *= 0.3
+    if (category === 'cafe')       b *= 0.5
+    if (category === 'shopping')   b *= 0.4
+  } else {                                         // late night 2–6
+    if (category === 'bar')        b *= 1.1
+    if (category === 'transport')  b *= 1.2
+  }
+  return b
 }
 
 // -----------------------------------------------------------------------------
@@ -389,6 +771,14 @@ export default function MapPage() {
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
   const [dismissed, setDismissed] = useState(new Set())    // hide from Map view (not Saved)
   const [navTarget, setNavTarget] = useState(null)         // active route destination
+  const [routesByMode, setRoutesByMode] = useState({})     // { foot, bike, car, transit } each → route|null
+  const [routeLoading, setRouteLoading] = useState(false)  // true while ANY mode is still pending
+  const [travelMode, setTravelMode] = useState('foot')     // 'foot' | 'bike' | 'car' | 'transit'
+
+  // Live context: real Munich weather (Open-Meteo) + ticking clock.
+  // Both feed into the contextBoost() multiplier that re-ranks recs.
+  const [weather, setWeather] = useState(null)             // { tempC, code, isDay, condition, label } | null
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   const [toast, setToast] = useState(null)
   const [centerTrigger, setCenterTrigger] = useState(0)
@@ -414,8 +804,62 @@ export default function MapPage() {
     fetchSaved()
   }, []) // eslint-disable-line
 
-  // refetch recommendations whenever method or location changes
-  useEffect(() => { fetchRecs() }, [method, userLoc.lat, userLoc.lng]) // eslint-disable-line
+  // When directions panel opens/closes, resize the bottom sheet:
+  // expand to show the full nav panel, restore to peek state when closed.
+  useEffect(() => {
+    if (navTarget) {
+      applyOffset(Math.min(520, window.innerHeight - 100))
+    } else if (mode === 'map') {
+      applyOffset(SNAP_PEEK)
+    }
+    // eslint-disable-next-line
+  }, [navTarget])
+
+  // refetch recommendations whenever method, location, or weather changes
+  useEffect(() => { fetchRecs() }, [method, userLoc.lat, userLoc.lng, weather?.condition]) // eslint-disable-line
+
+  // Live Munich weather from Open-Meteo, refreshed every 15 min.
+  useEffect(() => {
+    let cancelled = false
+    const load = () => fetchWeather(DEFAULT_CENTER[0], DEFAULT_CENTER[1])
+      .then(w => { if (!cancelled) setWeather(w) })
+    load()
+    const id = setInterval(load, 15 * 60 * 1000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
+
+  // Ticking clock — updates every 60 s so the time pill stays accurate
+  // and the contextBoost() recomputes when crossing an hour boundary.
+  useEffect(() => {
+    const id = setInterval(() => setCurrentTime(new Date()), 60 * 1000)
+    return () => clearInterval(id)
+  }, [])
+
+  // When a destination is selected, fetch routes for ALL four modes in
+  // parallel so the mode-selector tabs can show comparative times upfront.
+  useEffect(() => {
+    if (!navTarget) { setRoutesByMode({}); setRouteLoading(false); return }
+    let cancelled = false
+    setRoutesByMode({})
+    setRouteLoading(true)
+    const modes = ['foot', 'bike', 'car', 'transit']
+    let remaining = modes.length
+    for (const mode of modes) {
+      fetchRoute(
+        { lat: userLoc.lat, lng: userLoc.lng },
+        { lat: navTarget.lat, lng: navTarget.lng },
+        mode,
+      ).then(route => {
+        if (cancelled) return
+        setRoutesByMode(prev => ({ ...prev, [mode]: route }))
+        if (--remaining === 0) setRouteLoading(false)
+      })
+    }
+    return () => { cancelled = true }
+  }, [navTarget, userLoc.lat, userLoc.lng])
+
+  // Derived: the route data for the currently-selected travel mode.
+  const routeData = routesByMode[travelMode] ?? null
 
   async function fetchSaved() {
     try {
@@ -429,6 +873,11 @@ export default function MapPage() {
       const params = new URLSearchParams({
         userId: USER_ID, lat: userLoc.lat, lng: userLoc.lng, method,
       })
+      // Pass real weather to backend — pick_reason() already uses 'rain';
+      // the recommender methods receive it in context too.
+      if (weather?.condition && weather.condition !== 'clear' && weather.condition !== 'clouds') {
+        params.set('weather', weather.condition)
+      }
       const res = await fetch(`${API}/recommendations?${params}`)
       const data = await res.json()
       if (Array.isArray(data)) setRecommendations(data)
@@ -552,8 +1001,17 @@ export default function MapPage() {
     if (mode === 'map') {
       // Use server-ranked recommendations; fall back to all saved if recs not yet loaded.
       // Filter out items the user has swiped away from the Map view (still in Saved).
-      const recs = recommendations.length ? recommendations : savedItems.map(it => ({ item: it, score: 0, explanation: {} }))
-      return recs.filter(r => !dismissed.has(r.item.id) && filterFn(r.item))
+      const baseRecs = recommendations.length
+        ? recommendations
+        : savedItems.map(it => ({ item: it, score: 0.5, explanation: {} }))
+      const hour = currentTime.getHours()
+      return baseRecs
+        .filter(r => !dismissed.has(r.item.id) && filterFn(r.item))
+        .map(r => ({
+          ...r,
+          contextScore: (r.score ?? 0.5) * contextBoost(r.item.category, weather, hour),
+        }))
+        .sort((a, b) => b.contextScore - a.contextScore)
     } else {
       // Saved mode: locally sorted full list (ignores dismissed — it's a different view)
       const items = [...savedItems].filter(filterFn)
@@ -654,8 +1112,20 @@ export default function MapPage() {
             {mode === 'add' && newPin && <Marker position={[newPin.lat, newPin.lng]} icon={dropPinIcon} />}
             {navTarget && (
               <Polyline
-                positions={[[userLoc.lat, userLoc.lng], [navTarget.lat, navTarget.lng]]}
-                pathOptions={{ color: '#a0e6d4', weight: 4, opacity: 0.9, dashArray: '8 6' }}
+                positions={
+                  routeData?.coords
+                    ?? [[userLoc.lat, userLoc.lng], [navTarget.lat, navTarget.lng]]
+                }
+                pathOptions={{
+                  color: '#a0e6d4',
+                  weight: 5,
+                  opacity: 0.95,
+                  // Dashed only while we're still waiting for OSRM (or it failed
+                  // and we're showing the straight-line fallback).
+                  dashArray: routeData ? null : '8 6',
+                  lineCap: 'round',
+                  lineJoin: 'round',
+                }}
               />
             )}
           </MapContainer>
@@ -707,6 +1177,22 @@ export default function MapPage() {
           <LayersIcon size={22} />
         </button>
 
+        {/* ---- live weather + time pill (top-left of map, map mode only) --- */}
+        {(() => {
+          const WIcon = weather ? weatherIconFor(weather.condition, weather.isDay) : Sun
+          const timeStr = currentTime.toLocaleTimeString('de-DE', {
+            hour: '2-digit', minute: '2-digit', hour12: false,
+          })
+          return (
+            <div className="wb-weather" title={weather ? `${weather.label} · Munich` : 'Loading weather…'}>
+              <WIcon size={14} />
+              {weather && <span className="wb-weather-temp">{weather.tempC}°</span>}
+              <span className="wb-weather-sep">·</span>
+              <span className="wb-weather-time">{timeStr}</span>
+            </div>
+          )
+        })()}
+
         {/* ---- theme toggle (left edge) ------------------------------------ */}
         <button
           ref={themeBtnRef}
@@ -745,9 +1231,100 @@ export default function MapPage() {
           >
             <div className="wb-handle" />
           </div>
+
+          {navTarget ? (
+            /* =================== NAV PANEL =================== */
+            <>
+              <div className="wb-nav-header">
+                <button className="wb-nav-back" onClick={() => setNavTarget(null)} aria-label="Close directions">
+                  <ArrowLeft size={20} />
+                </button>
+                <div className="wb-nav-header-text">
+                  <div className="wb-nav-header-title">{navTarget.name}</div>
+                  <div className="wb-nav-header-sub">From Hauptbahnhof</div>
+                </div>
+              </div>
+
+              {/* mode tabs with per-mode times */}
+              <div className="wb-nav-modes" role="tablist" aria-label="Travel mode">
+                {TRAVEL_MODES.map(m => {
+                  const r = routesByMode[m.id]
+                  const mins = r ? Math.max(1, Math.round(r.duration / 60)) : null
+                  return (
+                    <button
+                      key={m.id}
+                      role="tab"
+                      aria-selected={travelMode === m.id}
+                      className={`wb-nav-mode ${travelMode === m.id ? 'active' : ''}`}
+                      onClick={() => setTravelMode(m.id)}
+                    >
+                      <m.Icon size={20} />
+                      <span className="wb-nav-mode-time">
+                        {mins != null ? `${mins} min` : '—'}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* primary route summary */}
+              <div className="wb-nav-summary">
+                {routeData ? (
+                  <>
+                    <div className="wb-nav-summary-time">
+                      {Math.max(1, Math.round(routeData.duration / 60))} min
+                    </div>
+                    <div className="wb-nav-summary-sub">
+                      {travelMode === 'transit'
+                        ? (routeData.transitLines?.length
+                            ? `via ${routeData.transitLines.join(', ')}${routeData.transfers ? ` · ${routeData.transfers} transfer${routeData.transfers > 1 ? 's' : ''}` : ''}`
+                            : 'Walk only — destination is close')
+                        : (routeData.distance != null
+                            ? (routeData.distance < 1000
+                                ? `${Math.round(routeData.distance)} m`
+                                : `${(routeData.distance / 1000).toFixed(1)} km`)
+                            : '')}
+                    </div>
+                  </>
+                ) : (
+                  <div className="wb-nav-summary-time wb-nav-summary-loading">Routing…</div>
+                )}
+              </div>
+
+              {/* transit step-by-step */}
+              {travelMode === 'transit' && routeData?.legs?.length > 0 && (
+                <div className="wb-nav-legs">
+                  {routeData.legs.map((leg, i) => (
+                    <div key={i} className={`wb-nav-leg wb-nav-leg-${leg.mode.toLowerCase()}`}>
+                      <div className="wb-nav-leg-icon">
+                        {leg.mode === 'WALK'     && <Footprints size={16} />}
+                        {leg.mode === 'TRANSIT'  && <Train size={16} />}
+                        {leg.mode === 'TRANSFER' && <Compass size={16} />}
+                      </div>
+                      <div className="wb-nav-leg-main">
+                        <div className="wb-nav-leg-label">{leg.label}</div>
+                        <div className="wb-nav-leg-meta">{leg.minutes} min{leg.line ? ` · ${leg.line}` : ''}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* CTA row */}
+              <div className="wb-nav-actions">
+                <button className="wb-nav-cta-primary" onClick={() => showToast('Live nav not implemented in this demo')}>
+                  <Navigation size={16} /> Start
+                </button>
+                <button className="wb-nav-cta-secondary" onClick={() => setNavTarget(null)}>
+                  Close
+                </button>
+              </div>
+            </>
+          ) : (
+            /* =================== NORMAL SHEET =================== */
+            <>
           <div className="wb-sheet-header">
             <div className="wb-sheet-title">{sheetTitle}</div>
-            <div className="wb-weather"><Cloud size={14} /><span>14°</span></div>
           </div>
 
           {/* segmented control swaps content by mode */}
@@ -821,6 +1398,8 @@ export default function MapPage() {
               )
             })}
           </div>
+            </>
+          )}
         </div>
 
         {/* ---- add card ----------------------------------------------------- */}
@@ -874,20 +1453,6 @@ export default function MapPage() {
             <span>Add</span>
           </button>
         </nav>
-
-        {/* ---- navigation banner (shown when a route is active) ----------- */}
-        {navTarget && (
-          <div className="wb-nav-banner">
-            <Navigation size={16} />
-            <div className="wb-nav-banner-text">
-              <div className="t">To {navTarget.name}</div>
-              <div className="s">{Math.round(haversineMeters(userLoc.lat, userLoc.lng, navTarget.lat, navTarget.lng))} m straight line</div>
-            </div>
-            <button className="wb-nav-banner-x" onClick={() => setNavTarget(null)} aria-label="Clear directions">
-              <X size={16} />
-            </button>
-          </div>
-        )}
 
         {/* ---- detail panel ('flipbook') ----------------------------------- */}
         {detailItemId != null && (
@@ -994,17 +1559,30 @@ function ScopedStyles() {
         box-shadow: 0 2px 6px rgba(0,0,0,0.22);
       }
       .wb-layers {
-        position: absolute; top: 140px; right: 12px;
+        position: absolute; top: 116px; right: 12px;
         width: 44px; height: 44px; border-radius: 22px; z-index: 500;
         display: flex; align-items: center; justify-content: center;
         color: var(--accent); transition: opacity 0.2s;
       }
       .wb-method-tag {
-        position: absolute; top: 148px; right: 64px;
+        position: absolute; top: 124px; right: 64px;
         background: var(--surface-1); border-radius: 14px; padding: 4px 10px;
         font-size: 11px; color: var(--accent); z-index: 500; font-weight: 500;
         transition: opacity 0.2s;
       }
+      .wb-weather {
+        position: absolute; top: 120px; left: 12px;
+        background: var(--surface-1); border-radius: 16px; padding: 6px 12px;
+        display: flex; align-items: center; gap: 6px;
+        font-size: 12px; color: var(--text-1); font-weight: 500;
+        z-index: 500;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+        transition: opacity 0.2s;
+      }
+      .wb-weather svg { color: var(--accent); }
+      .wb-weather-temp { color: var(--text-1); }
+      .wb-weather-sep  { opacity: 0.4; }
+      .wb-weather-time { color: var(--text-1); font-variant-numeric: tabular-nums; }
       .wb-fabs {
         position: absolute; right: 12px; bottom: 276px;
         display: flex; flex-direction: column; gap: 10px; z-index: 500;
@@ -1045,11 +1623,6 @@ function ScopedStyles() {
         padding: 4px 16px 12px; display: flex; align-items: center; justify-content: space-between;
       }
       .wb-sheet-title { font-size: 18px; font-weight: 500; }
-      .wb-weather {
-        background: var(--surface-1); padding: 5px 10px; border-radius: 14px;
-        font-size: 12px; display: flex; align-items: center; gap: 5px; color: var(--text-1);
-      }
-      .wb-weather svg { color: #fbbc04; }
       .wb-segmented {
         margin: 0 12px 12px; background: var(--surface-1); border-radius: 12px;
         padding: 3px; display: flex;
@@ -1118,9 +1691,11 @@ function ScopedStyles() {
       .wb-app[data-mode="saved"] .wb-search-area,
       .wb-app[data-mode="saved"] .wb-layers,
       .wb-app[data-mode="saved"] .wb-method-tag,
+      .wb-app[data-mode="saved"] .wb-weather,
       .wb-app[data-mode="add"]   .wb-search-area,
       .wb-app[data-mode="add"]   .wb-layers,
-      .wb-app[data-mode="add"]   .wb-method-tag {
+      .wb-app[data-mode="add"]   .wb-method-tag,
+      .wb-app[data-mode="add"]   .wb-weather {
         opacity: 0; pointer-events: none;
       }
 
@@ -1179,27 +1754,101 @@ function ScopedStyles() {
       /* Swipeable rows — make sure they cooperate with vertical scrolling */
       .wb-swipeable { touch-action: pan-y; will-change: transform; }
 
-      /* Navigation banner — appears at the top when a route is drawn */
-      .wb-nav-banner {
-        position: absolute; top: 12px; left: 12px; right: 12px;
-        background: var(--accent); color: var(--accent-on);
-        border-radius: 16px; padding: 10px 12px;
-        display: flex; align-items: center; gap: 10px;
-        z-index: 750;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.22);
-      }
-      .wb-nav-banner-text { flex: 1; min-width: 0; }
-      .wb-nav-banner-text .t { font-size: 13px; font-weight: 600; }
-      .wb-nav-banner-text .s { font-size: 11px; opacity: 0.85; }
-      .wb-nav-banner-x {
-        width: 28px; height: 28px; border-radius: 50%;
-        background: rgba(0,0,0,0.12); border: none; cursor: pointer;
-        color: var(--accent-on); display: flex; align-items: center; justify-content: center;
-      }
       .wb-fab.is-active {
         background: var(--accent); color: var(--accent-on);
       }
       .wb-fab.is-active svg { color: var(--accent-on); }
+
+      /* ============== NAV PANEL (replaces sheet content while routing) ============== */
+      .wb-nav-header {
+        padding: 4px 12px 12px; display: flex; align-items: center; gap: 12px;
+      }
+      .wb-nav-back {
+        width: 36px; height: 36px; border-radius: 50%;
+        background: transparent; border: none; cursor: pointer;
+        color: var(--text-1); display: flex; align-items: center; justify-content: center;
+        flex-shrink: 0;
+      }
+      .wb-nav-back:hover { background: var(--surface-1); }
+      .wb-nav-header-text { flex: 1; min-width: 0; }
+      .wb-nav-header-title {
+        font-size: 17px; font-weight: 600; color: var(--text-1);
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      }
+      .wb-nav-header-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+      .wb-nav-modes {
+        margin: 0 12px 16px; display: flex; gap: 4px;
+        background: var(--surface-1); padding: 4px; border-radius: 14px;
+      }
+      .wb-nav-mode {
+        flex: 1; height: 56px; border-radius: 11px;
+        background: transparent; border: none; cursor: pointer;
+        color: var(--text-2);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 2px;
+        transition: background 0.15s, color 0.15s;
+      }
+      .wb-nav-mode:hover { color: var(--text-1); }
+      .wb-nav-mode.active {
+        background: var(--accent); color: var(--accent-on);
+      }
+      .wb-nav-mode-time {
+        font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
+      }
+
+      .wb-nav-summary {
+        margin: 0 12px 14px; padding: 16px;
+        background: var(--surface-1); border-radius: 14px;
+      }
+      .wb-nav-summary-time {
+        font-size: 28px; font-weight: 600; color: var(--text-1);
+        line-height: 1.1;
+      }
+      .wb-nav-summary-loading { font-size: 18px; color: var(--text-2); font-weight: 500; }
+      .wb-nav-summary-sub {
+        font-size: 13px; color: var(--text-2); margin-top: 6px;
+      }
+
+      .wb-nav-legs {
+        margin: 0 12px 14px; padding: 6px 4px;
+        background: var(--surface-1); border-radius: 14px;
+        max-height: 240px; overflow-y: auto;
+      }
+      .wb-nav-leg {
+        display: flex; align-items: center; gap: 12px;
+        padding: 10px 12px;
+      }
+      .wb-nav-leg + .wb-nav-leg {
+        border-top: 0.5px solid var(--border);
+      }
+      .wb-nav-leg-icon {
+        width: 32px; height: 32px; border-radius: 50%;
+        background: var(--bg);
+        display: flex; align-items: center; justify-content: center;
+        color: var(--text-1); flex-shrink: 0;
+      }
+      .wb-nav-leg-transit .wb-nav-leg-icon { background: var(--accent); color: var(--accent-on); }
+      .wb-nav-leg-main { flex: 1; min-width: 0; }
+      .wb-nav-leg-label { font-size: 13px; color: var(--text-1); font-weight: 500; }
+      .wb-nav-leg-meta  { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+      .wb-nav-actions {
+        margin: auto 12px 14px; display: flex; gap: 8px;
+      }
+      .wb-nav-cta-primary {
+        flex: 2; height: 44px; border-radius: 22px;
+        background: var(--accent); color: var(--accent-on);
+        border: none; cursor: pointer;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+        font-size: 14px; font-weight: 600;
+      }
+      .wb-nav-cta-secondary {
+        flex: 1; height: 44px; border-radius: 22px;
+        background: var(--surface-1); color: var(--text-1);
+        border: none; cursor: pointer;
+        font-size: 14px; font-weight: 500;
+      }
 
       /* Detail panel — the "flipbook" overlay */
       .wb-detail {
