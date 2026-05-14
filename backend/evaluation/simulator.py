@@ -51,9 +51,13 @@ def generate_session(num_events=8, start_hour=9, seed=None):
     return events
 
 
-def generate_multiple_sessions(num_sessions=10, num_events=8):
-    """Generate several diverse sessions for robust evaluation."""
+def generate_multiple_sessions(num_sessions=10, num_events=8, base_seed=0):
+    """Generate several diverse sessions for robust evaluation.
+
+    base_seed shifts the seed range so different evaluation runs produce
+    different session sets (needed for variance estimates across runs).
+    """
     return [
-        generate_session(num_events=num_events, start_hour=random.randint(8, 18), seed=s)
+        generate_session(num_events=num_events, start_hour=random.randint(8, 18), seed=base_seed + s)
         for s in range(num_sessions)
     ]

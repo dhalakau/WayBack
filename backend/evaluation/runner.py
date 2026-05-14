@@ -69,14 +69,15 @@ def evaluate_method(method, items, sessions, top_k=10):
     }
 
 
-def run_evaluation(items, methods, num_sessions=20, num_events=8):
+def run_evaluation(items, methods, num_sessions=20, num_events=8, base_seed=0):
     """Run the full evaluation across all methods."""
     sessions = generate_multiple_sessions(
         num_sessions=num_sessions,
         num_events=num_events,
+        base_seed=base_seed,
     )
 
-    print(f"\nEvaluating {len(methods)} methods on {num_sessions} sessions × {num_events} events...\n")
+    print(f"\nEvaluating {len(methods)} methods on {num_sessions} sessions × {num_events} events (base_seed={base_seed})...\n")
 
     results = []
     for method in methods:
