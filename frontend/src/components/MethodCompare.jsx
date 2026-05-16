@@ -78,9 +78,13 @@ export default function MethodCompare() {
       </div>
 
       <div className="wb-compare-grid">
-        <MethodColumn name="CBR"   paperSection="§5.1" items={results.cbr}   loading={loading} />
-        <MethodColumn name="JITIR" paperSection="§5.2" items={results.jitir} loading={loading} />
-        <MethodColumn name="CIA"   paperSection="§5.3" items={results.cia}   loading={loading} />
+        {/* Primary label is human-friendly so non-academic users can tell the
+            columns apart; the technical acronym + paper §-ref stays as a
+            secondary subtitle, and the full algorithmic detail lives in the
+            "How do these differ?" modal. */}
+        <MethodColumn label="Category match" subtitle="CBR · §5.1"   items={results.cbr}   loading={loading} />
+        <MethodColumn label="Text relevance" subtitle="JITIR · §5.2" items={results.jitir} loading={loading} />
+        <MethodColumn label="Smart context"  subtitle="CIA · §5.3"   items={results.cia}   loading={loading} />
       </div>
 
       <div className="wb-compare-note">
@@ -93,12 +97,12 @@ export default function MethodCompare() {
   )
 }
 
-function MethodColumn({ name, paperSection, items, loading }) {
+function MethodColumn({ label, subtitle, items, loading }) {
   return (
     <div className="wb-compare-col">
       <div className="wb-compare-col-head">
-        <div className="wb-compare-col-name">{name}</div>
-        <div className="wb-compare-col-section">{paperSection}</div>
+        <div className="wb-compare-col-name">{label}</div>
+        <div className="wb-compare-col-section">{subtitle}</div>
       </div>
       <div className="wb-compare-col-body">
         {loading && (
