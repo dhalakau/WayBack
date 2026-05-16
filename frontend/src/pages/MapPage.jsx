@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useLocation } from 'react-router-dom'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
 import L from 'leaflet'
@@ -9,14 +10,16 @@ import {
   Train, Landmark, Camera, Navigation, Locate, MoreHorizontal,
   Sparkles, Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
   Footprints, Bike, Car, ArrowLeft,
-  Map as MapIcon, CirclePlus, ChevronLeft, ChevronRight,
+  Map as MapIcon, ChevronLeft, ChevronRight,
   Ticket, StickyNote, Tags,
+  ChevronDown, Check,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
 import MethodCompare from '../components/MethodCompare'
 import TypeBadge from '../components/TypeBadge'
 import TicketCountdown from '../components/TicketCountdown'
+import TabBar from '../components/TabBar'
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -58,7 +61,7 @@ const CATEGORY_GRADIENTS = {
 
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
 const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
-const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z' }
+const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', distance: 'Distance' }
 
 const TILES = {
   dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -929,7 +932,12 @@ export default function MapPage() {
   const [mode, setMode] = useState('map')              // map | saved | add
   const [theme, setTheme] = useState('dark')
   const [method, setMethod] = useState('cia')
-  const [sort, setSort] = useState('recent')
+  // Paper §3 — saved-item ordering: recency, frequency, alpha, proximity.
+  // Sort is applied AFTER category/search/type filters in listToShow().
+  const [activeSort, setActiveSort] = useState('recent')
+  // Open/close state for the sort dropdown in the Saved sheet header.
+  const [sortMenuOpen, setSortMenuOpen] = useState(false)
+  const sortDropdownRef = useRef(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   // Paper §3 — second-tier filter by saved-item type (bookmark/ticket/map_pin/note).
@@ -976,6 +984,17 @@ export default function MapPage() {
   const themeBtnRef = useRef(null)
   const dragRef = useRef({ startY: 0, startOffset: 200, dragging: false, snap: 200 })
 
+  // When arriving from another route (e.g. TripPage tapping the Saved or Add
+  // tab), honor `?mode=` so the tab the user pressed actually opens.
+  const location = useLocation()
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const next = params.get('mode')
+    if (next === 'saved' || next === 'add') changeMode(next)
+    // Intentionally only on first mount — subsequent changes use changeMode().
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // ---- initial data + geolocation -------------------------------------------
   useEffect(() => {
     // Geolocation intentionally disabled for the demo — fixed Hauptbahnhof
@@ -1021,6 +1040,23 @@ export default function MapPage() {
     const id = setInterval(() => setCurrentTime(new Date()), 60 * 1000)
     return () => clearInterval(id)
   }, [])
+
+  // Sort dropdown — close on outside click / Escape.
+  useEffect(() => {
+    if (!sortMenuOpen) return
+    function onDocClick(e) {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(e.target)) {
+        setSortMenuOpen(false)
+      }
+    }
+    function onKey(e) { if (e.key === 'Escape') setSortMenuOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [sortMenuOpen])
 
   // When a destination is selected, fetch routes for ALL four modes in
   // parallel so the mode-selector tabs can show comparative times upfront.
@@ -1279,11 +1315,21 @@ export default function MapPage() {
         }))
         .sort((a, b) => b.contextScore - a.contextScore)
     } else {
-      // Saved mode: locally sorted full list (ignores dismissed — it's a different view)
+      // Saved mode: locally sorted full list (ignores dismissed — it's a different view).
+      // Paper §3: saved-item ordering — recency, frequency, alpha, proximity.
+      // Sort applied after category/search/type filters.
       const items = [...savedItems].filter(filterFn)
-      if (sort === 'recent') items.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
-      if (sort === 'views')  items.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
-      if (sort === 'abc')    items.sort((a, b) => a.name.localeCompare(b.name))
+      // 'distance' requires a known user location; otherwise fall back to recency.
+      const effectiveSort = (activeSort === 'distance' && !userLoc) ? 'recent' : activeSort
+      if (effectiveSort === 'recent') items.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0))
+      if (effectiveSort === 'views')  items.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+      if (effectiveSort === 'abc')    items.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+      if (effectiveSort === 'distance') {
+        items.sort((a, b) =>
+          haversineMeters(userLoc.lat, userLoc.lng, a.lat, a.lng) -
+          haversineMeters(userLoc.lat, userLoc.lng, b.lat, b.lng)
+        )
+      }
       return items.map(it => ({ item: it, score: null, explanation: {} }))
     }
   }
@@ -1487,6 +1533,10 @@ export default function MapPage() {
               ))}
             </div>
           )}
+
+          {/* Sort moved to a dropdown in the Saved sheet header — see
+              .wb-sort-dropdown below. The state (activeSort) and sort logic
+              in listToShow() are unchanged. */}
         </div>
 
         {/* ---- layers shortcut + method tag (map mode only) ---------------- */}
@@ -1652,14 +1702,73 @@ export default function MapPage() {
           <div className="wb-sheet-header">
             <div className="wb-sheet-title">{sheetTitle}</div>
             {mode === 'saved' && (
-              <button
-                type="button"
-                className="wb-compare-toggle"
-                onClick={() => setCompareMode(m => !m)}
-                aria-pressed={compareMode}
-              >
-                {compareMode ? 'List view' : 'Compare methods'}
-              </button>
+              <div className="wb-sheet-actions">
+                {/* Paper §3 — sort dropdown (recency / frequency / alpha /
+                    proximity). Hidden while the Compare-methods view is
+                    showing because that view ignores the saved-list sort. */}
+                {!compareMode && (() => {
+                  const hasLoc = !!userLoc
+                  const sortOptions = [
+                    { key: 'recent',   label: 'Recent',      disabled: false },
+                    { key: 'views',    label: 'Most viewed', disabled: false },
+                    { key: 'abc',      label: 'A–Z',         disabled: false },
+                    { key: 'distance', label: 'Distance',    disabled: !hasLoc },
+                  ]
+                  return (
+                    <div className="wb-sort-dropdown" ref={sortDropdownRef}>
+                      <button
+                        type="button"
+                        className="wb-sort-trigger"
+                        aria-haspopup="listbox"
+                        aria-expanded={sortMenuOpen}
+                        onClick={() => setSortMenuOpen(o => !o)}
+                      >
+                        <span className="wb-sort-trigger-label">Sort:</span>
+                        <span className="wb-sort-trigger-value">{SORT_LABEL[activeSort]}</span>
+                        <ChevronDown size={13} aria-hidden="true" />
+                      </button>
+                      {sortMenuOpen && (
+                        <div className="wb-sort-menu" role="listbox" aria-label="Sort saved items">
+                          {sortOptions.map(({ key, label, disabled }) => {
+                            const selected = activeSort === key
+                            return (
+                              <button
+                                key={key}
+                                type="button"
+                                role="option"
+                                aria-selected={selected}
+                                disabled={disabled}
+                                className={`wb-sort-menu-item${selected ? ' is-selected' : ''}${disabled ? ' is-disabled' : ''}`}
+                                onClick={() => {
+                                  if (disabled) return
+                                  setActiveSort(key)
+                                  setSortMenuOpen(false)
+                                  showToast(`Sorted: ${SORT_LABEL[key]}`)
+                                }}
+                              >
+                                <span className="wb-sort-menu-check" aria-hidden="true">
+                                  {selected && <Check size={13} />}
+                                </span>
+                                <span className="wb-sort-menu-label">{label}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+                {/* "Plan my day" moved to the bottom navigation as the Plan
+                    tab — see TabBar.jsx — to declutter this header. */}
+                <button
+                  type="button"
+                  className="wb-compare-toggle"
+                  onClick={() => setCompareMode(m => !m)}
+                  aria-pressed={compareMode}
+                >
+                  {compareMode ? 'List view' : 'Compare methods'}
+                </button>
+              </div>
             )}
           </div>
 
@@ -1669,24 +1778,19 @@ export default function MapPage() {
             </div>
           ) : (
             <>
-          {/* segmented control swaps content by mode */}
-          <div className="wb-segmented">
-            {mode === 'map' ? (
-              ['cbr', 'jitir', 'cia'].map(m => (
+          {/* Segmented control: ranking method in Map view only.
+              Saved view's sort lives in the chip row above the sheet
+              (Paper §3 — recency / frequency / alpha / proximity). */}
+          {mode === 'map' && (
+            <div className="wb-segmented">
+              {['cbr', 'jitir', 'cia'].map(m => (
                 <button key={m} className={`wb-seg ${method === m ? 'active' : ''}`}
                   onClick={() => { setMethod(m); showToast(`Ranked: ${METHOD_LABEL[m]}`) }}>
                   {METHOD_LABEL[m]}
                 </button>
-              ))
-            ) : (
-              ['recent', 'views', 'abc'].map(s => (
-                <button key={s} className={`wb-seg ${sort === s ? 'active' : ''}`}
-                  onClick={() => { setSort(s); showToast(`Sorted: ${SORT_LABEL[s]}`) }}>
-                  {SORT_LABEL[s]}
-                </button>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="wb-list">
             {list.length === 0 ? (
@@ -1793,21 +1897,8 @@ export default function MapPage() {
           <button className="wb-save-btn" onClick={saveNewPlace}>Save</button>
         </div>
 
-        {/* ---- bottom nav --------------------------------------------------- */}
-        <nav className="wb-nav">
-          <button className={`wb-nav-item ${mode === 'map' ? 'active' : ''}`} onClick={() => changeMode('map')}>
-            <span className="nav-icon"><MapIcon size={20} /></span>
-            <span>Map</span>
-          </button>
-          <button className={`wb-nav-item ${mode === 'saved' ? 'active' : ''}`} onClick={() => changeMode('saved')}>
-            <span className="nav-icon"><Bookmark size={20} /></span>
-            <span>Saved</span>
-          </button>
-          <button className={`wb-nav-item ${mode === 'add' ? 'active' : ''}`} onClick={() => changeMode('add')}>
-            <span className="nav-icon"><CirclePlus size={20} /></span>
-            <span>Add</span>
-          </button>
-        </nav>
+        {/* ---- bottom nav (shared with TripPage) --------------------------- */}
+        <TabBar current={mode} onModeSelect={changeMode} />
 
         {/* ---- detail panel ('flipbook') ----------------------------------- */}
         {detailItemId != null && (
@@ -1940,6 +2031,99 @@ function ScopedStyles() {
         color: var(--accent-on);
         border-color: var(--accent);
       }
+
+      /* Paper §3 — saved-item sort, rendered as a small dropdown in the
+         Saved sheet header (lives next to the Compare-methods toggle). */
+      .wb-sheet-actions {
+        display: flex; align-items: center; gap: 8px;
+      }
+      .wb-sort-dropdown {
+        position: relative;
+      }
+      .wb-sort-trigger {
+        height: 28px;
+        padding: 0 8px 0 10px;
+        background: transparent;
+        border: 0.5px solid var(--border);
+        border-radius: 9px;
+        display: inline-flex; align-items: center; gap: 5px;
+        font-size: 11.5px;
+        color: var(--text-2);
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+      }
+      .wb-sort-trigger:hover {
+        background: rgba(255,255,255,0.04);
+        border-color: rgba(160,230,212,0.30);
+      }
+      .wb-app[data-theme="light"] .wb-sort-trigger:hover {
+        background: rgba(0,0,0,0.04);
+        border-color: rgba(19,124,110,0.30);
+      }
+      .wb-sort-trigger-label { color: var(--text-2); }
+      .wb-sort-trigger-value {
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .wb-sort-trigger svg {
+        color: var(--text-2);
+        opacity: 0.75;
+        transition: transform 0.15s;
+      }
+      .wb-sort-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+      .wb-sort-menu {
+        position: absolute; top: calc(100% + 4px); right: 0;
+        min-width: 168px;
+        background: var(--surface-1);
+        border: 0.5px solid var(--border);
+        border-radius: 10px;
+        padding: 4px;
+        box-shadow: 0 8px 22px rgba(0,0,0,0.38);
+        z-index: 800;
+        display: flex; flex-direction: column; gap: 2px;
+        animation: wbSortMenuIn 0.14s ease-out;
+      }
+      @keyframes wbSortMenuIn {
+        from { opacity: 0; transform: translateY(-4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .wb-sort-menu-item {
+        display: flex; align-items: center; gap: 8px;
+        width: 100%;
+        padding: 7px 8px;
+        background: transparent;
+        border: none;
+        border-radius: 7px;
+        font-size: 12.5px;
+        color: var(--text-1);
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.12s, color 0.12s;
+      }
+      .wb-sort-menu-item:hover:not(.is-disabled):not(.is-selected) {
+        background: rgba(160,230,212,0.12);
+        color: var(--accent);
+      }
+      .wb-app[data-theme="light"] .wb-sort-menu-item:hover:not(.is-disabled):not(.is-selected) {
+        background: rgba(19,124,110,0.10);
+      }
+      .wb-sort-menu-item.is-selected {
+        color: var(--accent);
+        background: rgba(160,230,212,0.10);
+      }
+      .wb-app[data-theme="light"] .wb-sort-menu-item.is-selected {
+        background: rgba(19,124,110,0.08);
+      }
+      .wb-sort-menu-item.is-disabled {
+        opacity: 0.40; cursor: not-allowed; color: var(--text-2);
+      }
+      .wb-sort-menu-check {
+        width: 14px; height: 14px; flex-shrink: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        color: var(--accent);
+      }
+      .wb-sort-menu-label { line-height: 1.2; }
 
       .wb-layers, .wb-theme, .wb-fab {
         background: var(--surface-1); border: none; cursor: pointer;
@@ -2083,20 +2267,7 @@ function ScopedStyles() {
       }
       .wb-item-delete:hover { background: rgba(224,65,63,0.12); }
 
-      .wb-nav {
-        position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
-        background: var(--surface-3); display: flex;
-        border-top: 0.5px solid var(--border); z-index: 700;
-      }
-      .wb-nav-item {
-        flex: 1; display: flex; flex-direction: column; align-items: center;
-        justify-content: center; gap: 2px; cursor: pointer;
-        color: var(--text-2); font-size: 11px;
-        background: transparent; border: none;
-      }
-      .wb-nav-item .nav-icon { padding: 3px 14px; border-radius: 12px; transition: background 0.18s; display: flex; }
-      .wb-nav-item.active { color: var(--accent); }
-      .wb-nav-item.active .nav-icon { background: var(--accent-bg); }
+      /* Bottom-nav styles live in components/TabBar.jsx (shared with TripPage). */
 
       .wb-toast {
         position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%);
