@@ -10,10 +10,13 @@ import {
   Sparkles, Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
   Footprints, Bike, Car, ArrowLeft,
   Map as MapIcon, CirclePlus, ChevronLeft, ChevronRight,
+  Ticket, StickyNote, Tags,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
 import MethodCompare from '../components/MethodCompare'
+import TypeBadge from '../components/TypeBadge'
+import TicketCountdown from '../components/TicketCountdown'
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -847,7 +850,33 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
         </div>
 
         <div className="wb-detail-body">
+          {/* Paper §3: ticket-type items show an event countdown above the description */}
+          {item.itemType === 'ticket' && (
+            <TicketCountdown eventDatetime={item.eventDatetime} />
+          )}
           <p className="wb-detail-desc">{item.notes || 'No description yet — be the first to add one.'}</p>
+
+          {/* Paper §3: tags surface user-chosen labels (e.g. "rooftop", "rainy day")
+              in the detail panel. Backend may return tags as a comma-separated
+              string OR as an array — handle both shapes. The saved-list search
+              bar already matches tags as one of its fields. */}
+          {(() => {
+            const raw = item.tags
+            let tags = []
+            if (Array.isArray(raw)) {
+              tags = raw.map(t => String(t).trim()).filter(Boolean)
+            } else if (typeof raw === 'string') {
+              tags = raw.split(',').map(t => t.trim()).filter(Boolean)
+            }
+            if (tags.length === 0) return null
+            return (
+              <div className="wb-detail-tags" aria-label="Tags">
+                {tags.map((tag, i) => (
+                  <span key={i} className="wb-detail-tag">#{tag}</span>
+                ))}
+              </div>
+            )
+          })()}
 
           <div className="wb-detail-stats">
             <div className="wb-stat">
@@ -903,6 +932,9 @@ export default function MapPage() {
   const [sort, setSort] = useState('recent')
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
+  // Paper §3 — second-tier filter by saved-item type (bookmark/ticket/map_pin/note).
+  // null = "All Types"; only surfaced in Saved view to keep Map view uncluttered.
+  const [activeType, setActiveType] = useState(null)
 
   const [savedItems, setSavedItems] = useState([])
   const [recommendations, setRecommendations] = useState([])
@@ -1108,13 +1140,20 @@ export default function MapPage() {
     }
     setMode(next)
     if (next === 'map')   applyOffset(SNAP_PEEK)
-    if (next === 'saved') applyOffset(getSnapFull())
+    // Saved view: leave ~190px at the top so the search bar + category pills
+    // (+ type chips for Feature 5) stay visible above the sheet. User can
+    // still drag the sheet up to full-screen if they want.
+    if (next === 'saved') applyOffset(Math.max(SNAP_PEEK, window.innerHeight - 240))
   }
 
   // ---- pill click ------------------------------------------------------------
+  // Paper §3 — category is the dominant re-finding cue for tourism items;
+  // making the pill row a real filter (not just a visual) so it cuts both
+  // the bottom-sheet list AND the map markers down to the picked category.
   function pickPill(key) {
     if (key === 'more') { showToast('All categories below — drag the sheet up'); return }
-    setFilter(key)
+    // Tapping the same active pill toggles back to "all".
+    setFilter(prev => (prev === key && key !== 'all') ? 'all' : key)
   }
 
   // ---- save / delete --------------------------------------------------------
@@ -1210,8 +1249,18 @@ export default function MapPage() {
   function listToShow() {
     const q = search.trim().toLowerCase()
     const filterFn = item => {
-      if (q && !item.name.toLowerCase().includes(q) && !(item.notes || '').toLowerCase().includes(q)) return false
-      if (mode === 'map' && filter !== 'all' && item.category !== filter) return false
+      // Paper §3 — re-finding search: match across name, notes, and tags.
+      // Tags may be a string or an array depending on backend shape.
+      if (q) {
+        const tagText = Array.isArray(item.tags) ? item.tags.join(' ') : (item.tags || '')
+        const hay = `${item.name} ${item.notes || ''} ${tagText}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      // Paper §3 — category filter applies in both Map and Saved views so
+      // the pill choice carries through when switching between them.
+      if (filter !== 'all' && item.category !== filter) return false
+      // Paper §3 — saved-item-type filter (second-tier; only set in Saved view).
+      if (activeType && item.itemType !== activeType) return false
       return true
     }
 
@@ -1318,14 +1367,20 @@ export default function MapPage() {
             <CenterOnUser trigger={centerTrigger} center={userLoc} />
             <SearchFocus query={search} items={savedItems} />
             <Marker position={[userLoc.lat, userLoc.lng]} icon={youAreHereIcon} />
-            {savedItems.map(it => (
-              <Marker
-                key={it.id}
-                position={[it.lat, it.lng]}
-                icon={savedMarkerIcon(it.category)}
-                eventHandlers={{ click: () => openDetail(it.id) }}
-              />
-            ))}
+            {savedItems.map(it => {
+              // Paper §3 — when a category filter is active, dim non-matching
+              // markers (keep them on the map for spatial context, don't hide).
+              const dim = filter !== 'all' && it.category !== filter
+              return (
+                <Marker
+                  key={it.id}
+                  position={[it.lat, it.lng]}
+                  icon={savedMarkerIcon(it.category)}
+                  opacity={dim ? 0.25 : 1}
+                  eventHandlers={{ click: () => openDetail(it.id) }}
+                />
+              )
+            })}
             {mode === 'add' && newPin && <Marker position={[newPin.lat, newPin.lng]} icon={dropPinIcon} />}
             {navTarget && (
               <Polyline
@@ -1408,6 +1463,30 @@ export default function MapPage() {
               <MoreHorizontal size={14} /> More
             </button>
           </div>
+          {/* Paper §3: filtering by saved-item type complements the category
+              filter for richer re-finding. Only surfaced in Saved view to keep
+              the Map default uncluttered. */}
+          {mode === 'saved' && (
+            <div className="wb-type-chips" role="tablist" aria-label="Filter by saved-item type">
+              {[
+                { key: null,        label: 'All',       Icon: Tags },
+                { key: 'ticket',    label: 'Tickets',   Icon: Ticket },
+                { key: 'bookmark',  label: 'Bookmarks', Icon: Bookmark },
+                { key: 'map_pin',   label: 'Pins',      Icon: MapPin },
+                { key: 'note',      label: 'Notes',     Icon: StickyNote },
+              ].map(({ key, label, Icon }) => (
+                <button
+                  key={key ?? 'all'}
+                  role="tab"
+                  aria-selected={activeType === key}
+                  className={`wb-type-chip ${activeType === key ? 'active' : ''}`}
+                  onClick={() => setActiveType(key)}
+                >
+                  <Icon size={12} strokeWidth={2.2} /> {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ---- layers shortcut + method tag (map mode only) ---------------- */}
@@ -1611,9 +1690,16 @@ export default function MapPage() {
 
           <div className="wb-list">
             {list.length === 0 ? (
-              <div className="wb-empty">
-                Nothing here yet. Tap <strong style={{ color: 'var(--accent)' }}>Add</strong> to save your first place.
-              </div>
+              (search.trim() || filter !== 'all' || activeType) ? (
+                <div className="wb-empty">
+                  No matches{search.trim() && <> for <em>“{search.trim()}”</em></>}.
+                  <div className="wb-empty-hint">Try a different search or clear the filters.</div>
+                </div>
+              ) : (
+                <div className="wb-empty">
+                  Nothing here yet. Tap <strong style={{ color: 'var(--accent)' }}>Add</strong> to save your first place.
+                </div>
+              )
             ) : list.map(({ item, score, explanation }) => {
               const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
               const ItemIcon = cat.Icon
@@ -1624,7 +1710,11 @@ export default function MapPage() {
                     <ItemIcon size={20} color={cat.color} />
                   </div>
                   <div className="wb-item-main">
-                    <div className="wb-item-name">{item.name}</div>
+                    <div className="wb-item-name-row">
+                      <span className="wb-item-name">{item.name}</span>
+                      {/* Paper §3: saved-item type badge */}
+                      <TypeBadge type={item.itemType || 'bookmark'} />
+                    </div>
                     <div className="wb-item-meta">
                       {timeAgo(item.savedAt)} · {cat.label.toLowerCase()}
                       {mode === 'saved' && ` · ${item.viewCount} ${item.viewCount === 1 ? 'view' : 'views'}`}
@@ -1826,6 +1916,31 @@ function ScopedStyles() {
       }
       .wb-pill.active { background: #c8e6d8; color: #0e3a31; border-color: transparent; }
 
+      /* Paper §3 — second-tier saved-item-type chips (Saved view only) */
+      .wb-type-chips {
+        margin-top: 8px;
+        display: flex; gap: 6px; overflow-x: auto;
+        scrollbar-width: none; padding-bottom: 2px;
+      }
+      .wb-type-chips::-webkit-scrollbar { display: none; }
+      .wb-type-chip {
+        flex-shrink: 0; height: 26px; padding: 0 10px;
+        background: transparent;
+        border: 0.5px solid var(--border);
+        border-radius: 13px;
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 11px; font-weight: 500;
+        color: var(--text-2);
+        cursor: pointer; white-space: nowrap;
+        transition: background 0.15s, color 0.15s, border-color 0.15s;
+      }
+      .wb-type-chip:hover { color: var(--text-1); }
+      .wb-type-chip.active {
+        background: var(--accent);
+        color: var(--accent-on);
+        border-color: var(--accent);
+      }
+
       .wb-layers, .wb-theme, .wb-fab {
         background: var(--surface-1); border: none; cursor: pointer;
         box-shadow: 0 2px 6px rgba(0,0,0,0.22);
@@ -1908,7 +2023,9 @@ function ScopedStyles() {
       .wb-seg.active { background: var(--surface-2); color: var(--text-1); }
       .wb-app[data-theme="light"] .wb-seg.active { background: #eef1f5; }
       .wb-list { flex: 1; overflow-y: auto; padding: 0 12px 16px; scrollbar-width: thin; }
-      .wb-empty { padding: 40px 16px; text-align: center; color: var(--text-2); font-size: 13px; }
+      .wb-empty { padding: 40px 16px; text-align: center; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+      .wb-empty em { color: var(--text-1); font-style: normal; }
+      .wb-empty-hint { margin-top: 6px; font-size: 12px; opacity: 0.75; }
       .wb-item {
         display: flex; align-items: flex-start; gap: 12px;
         padding: 12px 4px; border-bottom: 0.5px solid var(--border);
@@ -1920,8 +2037,40 @@ function ScopedStyles() {
         display: flex; align-items: center; justify-content: center; flex-shrink: 0;
       }
       .wb-item-main { flex: 1; min-width: 0; }
+      .wb-item-name-row {
+        display: flex; align-items: center; gap: 6px;
+        min-width: 0; flex-wrap: wrap;
+      }
       .wb-item-name { font-size: 14px; font-weight: 500; }
       .wb-item-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+      /* Paper §3 — type badge pill (bookmark / ticket / map_pin / note) */
+      .wb-type-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        padding: 2px 7px;
+        background: var(--surface-1);
+        color: var(--text-2);
+        border-radius: 9px;
+        font-size: 10px; font-weight: 600;
+        letter-spacing: 0.02em;
+        line-height: 1.4;
+        border: 0.5px solid var(--border);
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .wb-type-badge svg { opacity: 0.85; }
+      .wb-type-badge-label { line-height: 1; }
+      /* Tickets are time-sensitive — give them an accent highlight so they pop. */
+      .wb-type-badge--ticket {
+        background: rgba(160,230,212,0.16);
+        color: var(--accent);
+        border-color: rgba(160,230,212,0.30);
+      }
+      .wb-app[data-theme="light"] .wb-type-badge--ticket {
+        background: rgba(19,124,110,0.12);
+        color: var(--accent);
+        border-color: rgba(19,124,110,0.30);
+      }
       .wb-item-reason {
         font-size: 11px; color: var(--accent); margin-top: 4px;
         display: flex; align-items: center; gap: 4px;
@@ -1960,7 +2109,9 @@ function ScopedStyles() {
       @keyframes wbToast { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 
       /* mode-driven hiding -------------------------------------------------- */
-      .wb-app[data-mode="saved"] .wb-search-area,
+      /* Saved view keeps search + pills visible (Paper §3 re-finding filters)
+         but hides map-only chrome (layers, method tag, weather). Add view
+         hides everything because the add-card overlay covers the top. */
       .wb-app[data-mode="saved"] .wb-layers,
       .wb-app[data-mode="saved"] .wb-method-tag,
       .wb-app[data-mode="saved"] .wb-weather,
@@ -2182,6 +2333,55 @@ function ScopedStyles() {
         color: var(--text-1);
         margin: 0;
       }
+
+      /* Paper §3 — tag chips on the detail panel (read-only display) */
+      .wb-detail-tags {
+        display: flex; flex-wrap: wrap; gap: 6px;
+      }
+      .wb-detail-tag {
+        display: inline-flex; align-items: center;
+        padding: 4px 9px;
+        background: var(--surface-1);
+        color: var(--text-2);
+        border-radius: 10px;
+        font-size: 11px; font-weight: 500;
+        line-height: 1.4;
+        border: 0.5px solid var(--border);
+      }
+
+      /* Paper §3 — ticket event countdown (only shown for itemType=ticket) */
+      .wb-ticket-countdown {
+        display: flex; align-items: center; gap: 12px;
+        padding: 12px 14px;
+        background: var(--surface-1);
+        border-radius: 14px;
+        border: 0.5px solid var(--border);
+      }
+      .wb-ticket-countdown svg { flex-shrink: 0; }
+      .wb-ticket-countdown-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+      .wb-ticket-countdown-main {
+        font-size: 14px; font-weight: 600;
+        color: var(--text-1);
+        line-height: 1.2;
+      }
+      .wb-ticket-countdown-sub {
+        font-size: 11.5px; color: var(--text-2);
+      }
+      /* Future events: mint highlight. "tomorrow"/"today" are bolder. */
+      .wb-ticket-countdown--future,
+      .wb-ticket-countdown--future-bold {
+        background: rgba(160,230,212,0.10);
+        border-color: rgba(160,230,212,0.30);
+      }
+      .wb-ticket-countdown--future svg,
+      .wb-ticket-countdown--future-bold svg { color: var(--accent); }
+      .wb-ticket-countdown--future-bold .wb-ticket-countdown-main {
+        color: var(--accent);
+      }
+      /* Past events: muted */
+      .wb-ticket-countdown--past { opacity: 0.7; }
+      .wb-ticket-countdown--past svg { color: var(--text-2); }
+      .wb-ticket-countdown--past .wb-ticket-countdown-main { color: var(--text-2); }
       .wb-detail-stats {
         display: grid; grid-template-columns: repeat(3, 1fr);
         gap: 8px;
