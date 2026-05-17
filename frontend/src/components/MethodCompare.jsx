@@ -88,7 +88,7 @@ export default function MethodCompare() {
       </div>
 
       <div className="wb-compare-note">
-        Same saved items, same context — three different rankings. This is
+        Same saved items, same context. Three different rankings. This is
         the comparison at the heart of Sappelli et&nbsp;al. (2017).
       </div>
 
@@ -163,8 +163,8 @@ function MethodInfoModal({ onClose }) {
 
         <p className="wb-attr-lede">
           The paper proposes and compares three context-aware recommendation
-          methods. They share the same input — your saved items and current
-          context — but rank items by very different algorithms.
+          methods. They share the same input (your saved items and current
+          context) but rank items by very different algorithms.
         </p>
 
         <ul className="wb-attr-list">

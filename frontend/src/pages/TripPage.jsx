@@ -34,7 +34,7 @@ const SLOTS = [
     id: 'morning',      time: '9:00',  label: 'Morning',
     categories: ['cafe'],
     fallback:   ['museum'],
-    reason: 'Closest café — a soft start to the day',
+    reason: 'Closest café. A soft start to the day.',
   },
   {
     id: 'late_morning', time: '11:30', label: 'Late morning',
@@ -44,7 +44,7 @@ const SLOTS = [
   {
     id: 'lunch',        time: '13:00', label: 'Lunch',
     categories: ['restaurant'],
-    reason: 'Lunch fit — the closest restaurant on the route',
+    reason: 'Lunch fit. The closest restaurant on the route.',
   },
   {
     id: 'afternoon',    time: '15:30', label: 'Afternoon',
@@ -54,7 +54,7 @@ const SLOTS = [
   {
     id: 'dinner',       time: '19:30', label: 'Dinner',
     categories: ['restaurant', 'bar'],
-    reason: 'Dinner — sit down or wind down nearby',
+    reason: 'Dinner. Sit down or wind down nearby.',
   },
 ]
 
@@ -201,7 +201,7 @@ function EmptyState({ error, count }) {
           ? 'Could not reach the backend.'
           : count === 0
             ? 'Save a few more places to build a day plan.'
-            : 'Almost there — a few more places will unlock the plan.'}
+            : 'Almost there. A few more places will unlock the plan.'}
       </p>
       <p className="wb-trip-empty-sub">
         A good day plan needs at least one café, one restaurant, and one

@@ -698,7 +698,7 @@ function proactiveBannerText(item, reason, signals) {
   if (reason === 'saved_long_ago') {
     return {
       title: `Still want to visit ${item.name}?`,
-      sub: signalLine || 'Saved a long time ago — time to revisit?',
+      sub: signalLine || 'Saved a long time ago. Time to revisit?',
     }
   }
   if (reason === 'matches_weather_indoor') {
@@ -857,7 +857,7 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
           {item.itemType === 'ticket' && (
             <TicketCountdown eventDatetime={item.eventDatetime} />
           )}
-          <p className="wb-detail-desc">{item.notes || 'No description yet — be the first to add one.'}</p>
+          <p className="wb-detail-desc">{item.notes || 'No description yet. Be the first to add one.'}</p>
 
           {/* Paper §3: tags surface user-chosen labels (e.g. "rooftop", "rainy day")
               in the detail panel. Backend may return tags as a comma-separated
@@ -1187,7 +1187,7 @@ export default function MapPage() {
   // making the pill row a real filter (not just a visual) so it cuts both
   // the bottom-sheet list AND the map markers down to the picked category.
   function pickPill(key) {
-    if (key === 'more') { showToast('All categories below — drag the sheet up'); return }
+    if (key === 'more') { showToast('All categories below. Drag the sheet up.'); return }
     // Tapping the same active pill toggles back to "all".
     setFilter(prev => (prev === key && key !== 'all') ? 'all' : key)
   }
@@ -1213,7 +1213,7 @@ export default function MapPage() {
       await fetchSaved(); fetchRecs()
       showToast(`Saved · ${newPlace.name.trim()}`)
       changeMode('map')
-    } catch { showToast('Save failed — is the backend running?') }
+    } catch { showToast('Save failed. Is the backend running?') }
   }
 
   async function deleteItem(id) {
@@ -1223,7 +1223,7 @@ export default function MapPage() {
       showToast('Removed')
       fetchRecs()
     } catch {
-      showToast('Delete failed — restoring')
+      showToast('Delete failed. Restoring.')
       fetchSaved()
     }
   }
@@ -1635,7 +1635,7 @@ export default function MapPage() {
                     >
                       <m.Icon size={20} />
                       <span className="wb-nav-mode-time">
-                        {mins != null ? `${mins} min` : '—'}
+                        {mins != null ? `${mins} min` : '-'}
                       </span>
                     </button>
                   )
@@ -1653,7 +1653,7 @@ export default function MapPage() {
                       {travelMode === 'transit'
                         ? (routeData.transitLines?.length
                             ? `via ${routeData.transitLines.join(', ')}${routeData.transfers ? ` · ${routeData.transfers} transfer${routeData.transfers > 1 ? 's' : ''}` : ''}`
-                            : 'Walk only — destination is close')
+                            : 'Walk only (destination is close).')
                         : (routeData.distance != null
                             ? (routeData.distance < 1000
                                 ? `${Math.round(routeData.distance)} m`
@@ -1869,7 +1869,7 @@ export default function MapPage() {
           <div className="wb-add-loc">
             <MapPin size={18} color="#ea4335" />
             <div className="wb-add-loc-text">
-              <div>{newPin ? `${newPin.lat.toFixed(4)}, ${newPin.lng.toFixed(4)}` : '—'}</div>
+              <div>{newPin ? `${newPin.lat.toFixed(4)}, ${newPin.lng.toFixed(4)}` : '-'}</div>
               <div className="sub">München · tap the map to move the pin</div>
             </div>
           </div>

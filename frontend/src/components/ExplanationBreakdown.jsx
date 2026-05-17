@@ -126,7 +126,7 @@ function AttributionModal({ onClose }) {
           </li>
           <li>
             <div className="wb-attr-li-head"><b>Good time of day</b> &middot; §4.4 Document relevance</div>
-            <div className="wb-attr-li-body">Category × hour-of-day plausibility — tourism-domain analog of the paper's content-overlap measure.</div>
+            <div className="wb-attr-li-body">Category × hour-of-day plausibility: tourism-domain analog of the paper's content-overlap measure.</div>
           </li>
           <li>
             <div className="wb-attr-li-head"><b>Likely your next stop</b> &middot; §4.5 Action prediction</div>
@@ -139,7 +139,7 @@ function AttributionModal({ onClose }) {
           <li>
             <div className="wb-attr-li-head"><b>Worth revisiting</b> &middot; §4.6 Diversity</div>
             <div className="wb-attr-li-body">
-              Under-surfaced items (low view count) — the re-finding payoff the paper targets
+              Under-surfaced items (low view count): the re-finding payoff the paper targets
               (§1, citing Elsweiler et al. 2007).
             </div>
           </li>
@@ -201,8 +201,8 @@ function computeSignals(item, userLoc, now) {
     views <= 3                          ? 'weak'   : 'none'
   const diversityDetail =
     views === 0 ? "You saved this but haven't visited yet"
-    : views === 1 ? 'Visited once — worth a second look'
-    : `Viewed ${views} times — re-visit candidate`
+    : views === 1 ? 'Visited once. Worth a second look.'
+    : `Viewed ${views} times. Re-visit candidate.`
 
   return [
     {
