@@ -1437,7 +1437,11 @@ export default function MapPage() {
           </MapContainer>
         </div>
 
-        {/* ---- proactive notification (W4 brief; paper §6.3 method choice) - */}
+        {/* ---- top overlay stack: banner + search/pills share one flex column
+                so the banner pushes the search bar down instead of z-stacking
+                on top of it. Weather / method-tag / layers stay on their own
+                absolute positions outside this stack. */}
+        <div className="wb-top-overlay-stack">
         {proactiveAlert && mode === 'map' && (() => {
           const t = proactiveBannerText(
             proactiveAlert.item,
@@ -1525,6 +1529,7 @@ export default function MapPage() {
           {/* Sort moved to a dropdown in the Saved sheet header — see
               .wb-sort-dropdown below. The state (activeSort) and sort logic
               in listToShow() are unchanged. */}
+        </div>
         </div>
 
         {/* ---- layers shortcut + method tag (map mode only) ---------------- */}

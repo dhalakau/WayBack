@@ -103,9 +103,19 @@ body { font-family: var(--font-body); }
   outline: 4px solid rgba(66,133,244,0.28);
 }
 
+/* Paper §6.3 — proactive banner and search/pills share a single flex column
+   so that when the banner appears it pushes the search bar + pills down
+   naturally instead of z-stacking on top of them. Weather / method-tag /
+   layers / FABs keep their own absolute positions on the periphery. */
+.wb-top-overlay-stack {
+  position: absolute; top: 12px; left: 12px; right: 12px;
+  z-index: 500;
+  display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none;
+}
+.wb-top-overlay-stack > * { pointer-events: auto; }
+
 .wb-search-area {
-  position: absolute; top: 0; left: 0; right: 0;
-  padding: 12px 12px 0; z-index: 500;
   transition: opacity 0.22s, transform 0.22s;
 }
 .wb-search {
@@ -739,13 +749,11 @@ body { font-family: var(--font-body); }
 
 /* Proactive notification banner (W4 brief; paper §6.3) ------------- */
 .wb-proactive {
-  position: absolute; top: 12px; left: 12px; right: 12px;
   background: rgba(196,69,54,0.10);
   color: var(--ink);
   border: 1px solid var(--pin-soft);
   border-radius: 16px; padding: 12px 14px;
   display: flex; align-items: center; gap: 12px;
-  z-index: 760;
   box-shadow: 0 1px 3px rgba(26,24,21,0.10), 0 2px 8px rgba(26,24,21,0.06);
   cursor: pointer;
   animation: wbProactiveIn 0.32s cubic-bezier(0.2,0.8,0.2,1);
@@ -767,7 +775,6 @@ body { font-family: var(--font-body); }
   from { opacity: 0; transform: translateY(-12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.wb-app:has(.wb-proactive) .wb-search-area { top: 76px; }
 
 /* ExplanationBreakdown — inline section (W4 brief; paper §4) ------ */
 /* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
