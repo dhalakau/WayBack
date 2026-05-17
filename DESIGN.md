@@ -24,7 +24,7 @@ This rejects the most common category reflexes:
 - Inter plus purple gradients reads as "Stripe-school AI startup"
 - Sparkles plus rounded cards reads as "ChatGPT-era AI feature"
 
-Instead, the aesthetic commits to **Editorial Paper**: cream and ink with one warm pin red as a singular signature accent. The map becomes the dark surface; the chrome around it is paper. References include Moleskine field notebooks, printed city atlases, and archival research journals.
+Instead, the aesthetic commits to **Editorial Paper**: cream paper everywhere, pin red as the single signature accent, ink for text and structure. The map joins the paper (CartoDB Positron tiles); there is no dark surface in the system. References include Moleskine field notebooks, printed city atlases, and archival research journals.
 
 This direction aligns with the research foundation. The Sappelli paper's central concept is re-finding, meaning past artifacts surfacing into present awareness. Paper aesthetics literally reproduce that metaphor.
 
@@ -60,7 +60,7 @@ Editorial Paper palette:
 --pin: #c44536;          /* warm red, single signature accent */
 --pin-soft: #e8a5a5;     /* low-emphasis pin state */
 
---map-bg: #1a2433;       /* the map is the only dark surface in the app */
+--map-bg: #ece4d2;       /* literal Positron tile background match; sits just below --paper in the cream family */
 --accent-fallback: #a0e6d4; /* legacy mint, retained only for live-data badges */
 ```
 
@@ -127,6 +127,7 @@ These are project-specific bans on top of the Impeccable defaults.
 | 2026-05-17 | Desktop layout breakpoint: 900px split layout | Demo-day reviewers open on laptop. Current 440px column is unusable on desktop. |
 | 2026-05-17 | New components added under author's ownership: TripPage (one-day itinerary), TabBar (4-tab production nav: Map/Saved/Plan/Add), TypeBadge, TicketCountdown. MapPage upgrades: sort dropdown, type filter chips, working category filter, text search, ?mode= URL routing. | Solo implementation, continued under Editorial Paper direction. TabBar repurposed from prior stub into production. All new components are governed by the anti-pattern bans above; violations introduced during build will be cleared in Phase 1. |
 | 2026-05-21 | Removed dark mode toggle. Editorial Paper is light-only by design; dark variant would invert the core concept (cream chrome plus dark map). Deferred indefinitely. | The dark-mode toggle (.wb-theme button, `theme` state, `[data-theme]` attribute, and the two CartoDB tile URL variants) all assumed dark/light were equal citizens. Under Editorial Paper, the map is the only dark surface and everything else is paper. A dark-chrome variant of the same product is a different product. Removed cleanly rather than maintaining a dead code path. |
+| 2026-05-17 | Pivoted to full cream Editorial Paper; dark map deprecated | Original split read as visual collage in practice (three dark blocks crashing into one cream block). The 'reverse Apple Maps' move was conceptually clever but not executable without a custom-styled dark tile (not in scope). Switched to CartoDB Positron tiles for genuine paper-on-paper continuity. Pin red remains single accent. |
 
 ---
 
