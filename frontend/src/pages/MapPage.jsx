@@ -31,17 +31,22 @@ const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible d
 const DEFAULT_ZOOM = 15
 
 // Category metadata — matches the 10 categories in backend/seed.py
+// Marker colors are pre-computed muted variants of the source category hues
+// (color-mix(in oklch, <orig> 55%, var(--paper-warm)) with powerless-hue
+// handling on the cream side). They preserve per-category recognizability
+// while no longer competing with the Editorial Paper cream chrome. Source
+// hues kept in the inline comments for traceability.
 const CATEGORIES = {
-  attraction:    { label: 'Attractions',  Icon: Camera,          color: '#78d9c2' },
-  restaurant:    { label: 'Restaurants',  Icon: UtensilsCrossed, color: '#f28b82' },
-  cafe:          { label: 'Cafés',        Icon: Coffee,          color: '#d4a276' },
-  museum:        { label: 'Museums',      Icon: Landmark,        color: '#a78bfa' },
-  park:          { label: 'Parks',        Icon: Trees,           color: '#4a9c6e' },
-  bar:           { label: 'Bars',         Icon: Wine,            color: '#ec4899' },
-  accommodation: { label: 'Hotels',       Icon: Bed,             color: '#d97a93' },
-  shopping:      { label: 'Shopping',     Icon: ShoppingBag,     color: '#fbbc04' },
-  services:      { label: 'Services',     Icon: Wrench,          color: '#5a6166' },
-  transport:     { label: 'Transport',    Icon: Train,           color: '#4285f4' },
+  attraction:    { label: 'Attractions',  Icon: Camera,          color: '#a0e1d0' },  // src #78d9c2
+  restaurant:    { label: 'Restaurants',  Icon: UtensilsCrossed, color: '#f8afa8' },  // src #f28b82
+  cafe:          { label: 'Cafés',        Icon: Coffee,          color: '#e3bd9c' },  // src #d4a276
+  museum:        { label: 'Museums',      Icon: Landmark,        color: '#c1b2fb' },  // src #a78bfa
+  park:          { label: 'Parks',        Icon: Trees,           color: '#88bf9d' },  // src #4a9c6e
+  bar:           { label: 'Bars',         Icon: Wine,            color: '#f690ba' },  // src #ec4899
+  accommodation: { label: 'Hotels',       Icon: Bed,             color: '#e9a5b5' },  // src #d97a93
+  shopping:      { label: 'Shopping',     Icon: ShoppingBag,     color: '#f6ce7c' },  // src #fbbc04
+  services:      { label: 'Services',     Icon: Wrench,          color: '#8b9d96' },  // src #5a6166
+  transport:     { label: 'Transport',    Icon: Train,           color: '#85b1fa' },  // src #4285f4
 }
 
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
