@@ -31,6 +31,9 @@
    (Phase A 2026-05-26 detail polish covers that).
    ============================================================ */
 :root {
+  color-scheme: light;
+
+  /* Typography (DESIGN.md §Type System). */
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -42,38 +45,40 @@
   --text-xl:  24px;
   --text-2xl: 32px;
   --text-3xl: 48px;
+
+  /* Editorial Paper palette (DESIGN.md §Color Tokens). Theme-independent
+     brand colors; the legacy --bg / --surface / --text / --accent values
+     under .wb-app are kept defined for the duration of Stage 2 but are
+     being phased out as callsites migrate. */
+  --paper:      #f3ede1;  /* 13.40:1 on --map-bg */
+  --paper-soft: #e8e0cf;
+  --paper-warm: #efe1c8;
+  --ink:        #1a1815;  /* 15.19:1 on --paper (AA + AAA body) */
+  --ink-soft:   #4a463f;  /*  8.04:1 on --paper (AA + AAA body) */
+  --rule:       #c8bca8;
+  --pin:        #c44536;  /*  4.24:1 on --paper (AA non-text at 3:1) */
+  --pin-soft:   #e8a5a5;
+  --map-bg:     #1a2433;
+  --accent-fallback: #a0e6d4;  /* legacy mint, retained only for live-data badges */
 }
 
 /* ============================================================
    Originated in MapPage.jsx ScopedStyles()
    ============================================================ */
-:root { color-scheme: dark; }
 html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
 body { font-family: var(--font-body); }
 .leaflet-container { font-family: inherit; }
 
 .wb-app {
+  /* Legacy tokens. Kept defined while Stage 2 callsite migration is in
+     progress. After A3 these will be unreferenced; cleanup tracked
+     separately. The .wb-app[data-theme="light"] override block was
+     removed alongside the dark-mode toggle on 2026-05-21. */
   --bg: #1a2433; --surface-1: #28323f; --surface-2: #1c2530; --surface-3: #14202d;
   --text-1: #e8eaed; --text-2: #9aa0a6; --border: rgba(255,255,255,0.08); --handle: #5f6368;
   --accent: #a0e6d4; --accent-on: #0e3a31; --accent-bg: rgba(160,230,212,0.18); --status: #e8eaed;
-  /* Editorial Paper palette - Phase A Stage 1 (2026-05-21): tokens defined, not yet applied to selectors */
-  --paper:      #f3ede1;  /* 13.40:1 on --map-bg (cream-on-dark AA body PASS) */
-  --paper-soft: #e8e0cf;
-  --paper-warm: #efe1c8;
-  --ink:        #1a1815;  /* 15.19:1 on --paper (AA + AAA body text PASS) */
-  --ink-soft:   #4a463f;  /*  8.04:1 on --paper (AA + AAA body text PASS) */
-  --rule:       #c8bca8;
-  --pin:        #c44536;  /*  4.24:1 on --paper (AA non-text PASS at 3:1; below 4.5:1 so not for body text) */
-  --pin-soft:   #e8a5a5;
-  --map-bg:     #1a2433;
-  --accent-fallback: var(--accent);
   position: fixed; inset: 0; background: var(--bg); color: var(--text-1); user-select: none;
   transition: background 0.25s, color 0.25s;
-}
-.wb-app[data-theme="light"] {
-  --bg: #eef1f5; --surface-1: #ffffff; --surface-2: #ffffff; --surface-3: #ffffff;
-  --text-1: #202124; --text-2: #5f6368; --border: rgba(0,0,0,0.08); --handle: #c4c7c5;
-  --accent: #137c6e; --accent-on: #ffffff; --accent-bg: rgba(19,124,110,0.10); --status: #202124;
 }
 
 .wb-app {
@@ -187,10 +192,6 @@ body { font-family: var(--font-body); }
   background: rgba(255,255,255,0.04);
   border-color: rgba(160,230,212,0.30);
 }
-.wb-app[data-theme="light"] .wb-sort-trigger:hover {
-  background: rgba(0,0,0,0.04);
-  border-color: rgba(19,124,110,0.30);
-}
 .wb-sort-trigger-label { color: var(--text-2); }
 .wb-sort-trigger-value {
   color: var(--accent);
@@ -236,15 +237,9 @@ body { font-family: var(--font-body); }
   background: rgba(160,230,212,0.12);
   color: var(--accent);
 }
-.wb-app[data-theme="light"] .wb-sort-menu-item:hover:not(.is-disabled):not(.is-selected) {
-  background: rgba(19,124,110,0.10);
-}
 .wb-sort-menu-item.is-selected {
   color: var(--accent);
   background: rgba(160,230,212,0.10);
-}
-.wb-app[data-theme="light"] .wb-sort-menu-item.is-selected {
-  background: rgba(19,124,110,0.08);
 }
 .wb-sort-menu-item.is-disabled {
   opacity: 0.40; cursor: not-allowed; color: var(--text-2);
@@ -256,7 +251,7 @@ body { font-family: var(--font-body); }
 }
 .wb-sort-menu-label { line-height: 1.2; }
 
-.wb-layers, .wb-theme, .wb-fab {
+.wb-layers, .wb-fab {
   background: var(--surface-1); border: none; cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.22);
 }
@@ -294,14 +289,6 @@ body { font-family: var(--font-body); }
   display: flex; align-items: center; justify-content: center;
   color: var(--text-1);
 }
-.wb-theme {
-  position: absolute; left: 12px; bottom: 276px;
-  width: 50px; height: 50px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: var(--accent); z-index: 500;
-  transition: bottom 0.32s cubic-bezier(0.2,0.8,0.2,1);
-}
-
 .wb-sheet {
   position: absolute; left: 0; right: 0; bottom: 60px;
   background: var(--surface-2);
@@ -335,7 +322,6 @@ body { font-family: var(--font-body); }
   background: transparent; border: none;
 }
 .wb-seg.active { background: var(--surface-2); color: var(--text-1); }
-.wb-app[data-theme="light"] .wb-seg.active { background: #eef1f5; }
 .wb-list { flex: 1; overflow-y: auto; padding: 0 12px 16px; scrollbar-width: thin; }
 .wb-empty { padding: 40px 16px; text-align: center; color: var(--text-2); font-size: 13px; line-height: 1.5; }
 .wb-empty em { color: var(--text-1); font-style: normal; }
@@ -379,11 +365,6 @@ body { font-family: var(--font-body); }
   background: rgba(160,230,212,0.16);
   color: var(--accent);
   border-color: rgba(160,230,212,0.30);
-}
-.wb-app[data-theme="light"] .wb-type-badge--ticket {
-  background: rgba(19,124,110,0.12);
-  color: var(--accent);
-  border-color: rgba(19,124,110,0.30);
 }
 .wb-item-reason {
   font-size: 11px; color: var(--accent); margin-top: 4px;

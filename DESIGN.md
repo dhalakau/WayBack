@@ -126,6 +126,7 @@ These are project-specific bans on top of the Impeccable defaults.
 | 2026-05-17 | Single signature motion moment: time-of-day ambient drift | Leverages existing weather and clock infrastructure. Rare in this product category to have UI that responds to time. |
 | 2026-05-17 | Desktop layout breakpoint: 900px split layout | Demo-day reviewers open on laptop. Current 440px column is unusable on desktop. |
 | 2026-05-17 | New components added under author's ownership: TripPage (one-day itinerary), TabBar (4-tab production nav: Map/Saved/Plan/Add), TypeBadge, TicketCountdown. MapPage upgrades: sort dropdown, type filter chips, working category filter, text search, ?mode= URL routing. | Solo implementation, continued under Editorial Paper direction. TabBar repurposed from prior stub into production. All new components are governed by the anti-pattern bans above; violations introduced during build will be cleared in Phase 1. |
+| 2026-05-21 | Removed dark mode toggle. Editorial Paper is light-only by design; dark variant would invert the core concept (cream chrome plus dark map). Deferred indefinitely. | The dark-mode toggle (.wb-theme button, `theme` state, `[data-theme]` attribute, and the two CartoDB tile URL variants) all assumed dark/light were equal citizens. Under Editorial Paper, the map is the only dark surface and everything else is paper. A dark-chrome variant of the same product is a different product. Removed cleanly rather than maintaining a dead code path. |
 
 ---
 

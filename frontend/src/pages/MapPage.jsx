@@ -930,7 +930,6 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
 export default function MapPage() {
   // ---- state -----------------------------------------------------------------
   const [mode, setMode] = useState('map')              // map | saved | add
-  const [theme, setTheme] = useState('dark')
   const [method, setMethod] = useState('cia')
   // Paper §3 — saved-item ordering: recency, frequency, alpha, proximity.
   // Sort is applied AFTER category/search/type filters in listToShow().
@@ -981,7 +980,6 @@ export default function MapPage() {
   // ---- sheet drag ------------------------------------------------------------
   const sheetRef = useRef(null)
   const fabsRef = useRef(null)
-  const themeBtnRef = useRef(null)
   const dragRef = useRef({ startY: 0, startOffset: 200, dragging: false, snap: 200 })
 
   // When arriving from another route (e.g. TripPage tapping the Saved or Add
@@ -1355,12 +1353,11 @@ export default function MapPage() {
     sheet.style.transform = `translateY(${ty}px)`
     const fabBottom = `${Math.max(76, offsetFromBottom + 76)}px`
     if (fabsRef.current)     fabsRef.current.style.bottom = fabBottom
-    if (themeBtnRef.current) themeBtnRef.current.style.bottom = fabBottom
     dragRef.current.snap = offsetFromBottom
   }
 
   // Initial position is handled entirely by CSS — the sheet's
-  // `transform: translateY(calc(100% - 200px))` and the FAB/theme
+  // `transform: translateY(calc(100% - 200px))` and the FAB
   // `bottom: 276px` give a 200px peek state on first paint. JS only
   // takes over once the user drags or switches modes.
 
@@ -1392,11 +1389,12 @@ export default function MapPage() {
   // ---- render ----------------------------------------------------------------
   const list = listToShow()
   const sheetTitle = mode === 'saved' ? `Saved (${savedItems.length})` : 'Your places'
-  const tileUrl = TILES[theme]
+  // Map tiles are always dark (DESIGN.md: the map is the only dark surface).
+  const tileUrl = TILES.dark
 
   return (
     <>
-      <div className="wb-app" data-theme={theme} data-mode={mode}>
+      <div className="wb-app" data-mode={mode}>
 
         {/* ---- map -------------------------------------------------------- */}
         <div className="wb-map-wrap">
@@ -1405,9 +1403,9 @@ export default function MapPage() {
             zoom={DEFAULT_ZOOM}
             zoomControl={false}
             attributionControl={false}
-            style={{ height: '100%', width: '100%', background: 'var(--bg)' }}
+            style={{ height: '100%', width: '100%', background: 'var(--map-bg)' }}
           >
-            <TileLayer key={theme} url={tileUrl} attribution={TILE_ATTRIB} />
+            <TileLayer url={tileUrl} attribution={TILE_ATTRIB} />
             <ClickToMovePin active={mode === 'add'} onPick={ll => setNewPin(ll)} />
             <CenterOnUser trigger={centerTrigger} center={userLoc} />
             <SearchFocus query={search} items={savedItems} />
@@ -1567,19 +1565,6 @@ export default function MapPage() {
             </div>
           )
         })()}
-
-        {/* ---- theme toggle (left edge) ------------------------------------ */}
-        <button
-          ref={themeBtnRef}
-          className="wb-theme"
-          onClick={() => {
-            const next = theme === 'dark' ? 'light' : 'dark'
-            setTheme(next); showToast(next === 'dark' ? 'Dark mode' : 'Light mode')
-          }}
-          aria-label="Toggle theme"
-        >
-          {theme === 'dark' ? <Sun size={22} /> : <Moon size={22} />}
-        </button>
 
         {/* ---- FABs (right edge) ------------------------------------------- */}
         <div ref={fabsRef} className="wb-fabs">
