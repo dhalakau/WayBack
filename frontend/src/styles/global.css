@@ -1,0 +1,1238 @@
+/* WayBack global stylesheet.
+ *
+ * Source of truth for all chrome styling. Consolidated from three inline
+ * <style> blocks (MapPage.jsx ScopedStyles, TripPage.jsx ScopedStyles,
+ * TabBar.jsx TabBarStyles) into a single file so future token/palette work
+ * (Phase 2) can happen in one place.
+ *
+ * Token names and values are intentionally preserved verbatim from the
+ * pre-consolidation state. Phase 2 will introduce the Editorial Paper
+ * palette (--paper / --ink / --pin) and rename the legacy tokens
+ * (--bg / --surface-1 / --accent) per DESIGN.md.
+ *
+ * Selector scopes are also preserved:
+ *   - tokens for the main app live on .wb-app (and the light-theme attr override)
+ *   - tokens for the trip page live on .wb-trip
+ *   - the bottom nav uses var(--x, fallback) so it works inside either scope
+ *
+ * Verified pre-consolidation: zero selector collisions across the three sources,
+ * zero JS template-string interpolations inside the CSS.
+ */
+
+
+/* ============================================================
+   Originated in MapPage.jsx ScopedStyles()
+   ============================================================ */
+:root { color-scheme: dark; }
+html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+.leaflet-container { font-family: inherit; }
+
+.wb-app {
+  --bg: #1a2433; --surface-1: #28323f; --surface-2: #1c2530; --surface-3: #14202d;
+  --text-1: #e8eaed; --text-2: #9aa0a6; --border: rgba(255,255,255,0.08); --handle: #5f6368;
+  --accent: #a0e6d4; --accent-on: #0e3a31; --accent-bg: rgba(160,230,212,0.18); --status: #e8eaed;
+  position: fixed; inset: 0; background: var(--bg); color: var(--text-1); user-select: none;
+  transition: background 0.25s, color 0.25s;
+}
+.wb-app[data-theme="light"] {
+  --bg: #eef1f5; --surface-1: #ffffff; --surface-2: #ffffff; --surface-3: #ffffff;
+  --text-1: #202124; --text-2: #5f6368; --border: rgba(0,0,0,0.08); --handle: #c4c7c5;
+  --accent: #137c6e; --accent-on: #ffffff; --accent-bg: rgba(19,124,110,0.10); --status: #202124;
+}
+
+.wb-app {
+  max-width: 440px;
+  margin: 0 auto;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.04);
+}
+
+.wb-map-wrap { position: absolute; inset: 0; }
+.leaflet-control-attribution { display: none; }
+
+.wb-pin {
+  width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid rgba(0,0,0,0.4);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+}
+.wb-pin svg { display: block; }
+.wb-you-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #4285f4; border: 3px solid #fff;
+  outline: 4px solid rgba(66,133,244,0.28);
+}
+
+.wb-search-area {
+  position: absolute; top: 0; left: 0; right: 0;
+  padding: 12px 12px 0; z-index: 500;
+  transition: opacity 0.22s, transform 0.22s;
+}
+.wb-search {
+  height: 48px; background: var(--surface-1); border-radius: 24px;
+  display: flex; align-items: center; padding: 0 14px; gap: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+}
+.wb-logo {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--bg);
+  display: flex; align-items: center; justify-content: center; color: var(--accent);
+}
+.wb-search-input {
+  flex: 1; border: none; background: transparent; outline: none;
+  color: var(--text-1); font-size: 14px; padding: 0; min-width: 0;
+}
+.wb-search-input::placeholder { color: var(--text-2); }
+.wb-clear { background: transparent; border: none; color: var(--text-2); cursor: pointer; padding: 4px; display: flex; }
+.wb-avatar {
+  width: 30px; height: 30px; border-radius: 50%; background: #d4a276;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 500; color: #1a2433;
+}
+
+.wb-pills {
+  margin-top: 10px; display: flex; gap: 8px; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 2px;
+}
+.wb-pills::-webkit-scrollbar { display: none; }
+.wb-pill {
+  flex-shrink: 0; height: 36px; padding: 0 14px;
+  background: var(--surface-1); border: 0.5px solid var(--border);
+  border-radius: 18px; display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-1); cursor: pointer; white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+}
+.wb-pill.active { background: #c8e6d8; color: #0e3a31; border-color: transparent; }
+
+/* Paper §3 — second-tier saved-item-type chips (Saved view only) */
+.wb-type-chips {
+  margin-top: 8px;
+  display: flex; gap: 6px; overflow-x: auto;
+  scrollbar-width: none; padding-bottom: 2px;
+}
+.wb-type-chips::-webkit-scrollbar { display: none; }
+.wb-type-chip {
+  flex-shrink: 0; height: 26px; padding: 0 10px;
+  background: transparent;
+  border: 0.5px solid var(--border);
+  border-radius: 13px;
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer; white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.wb-type-chip:hover { color: var(--text-1); }
+.wb-type-chip.active {
+  background: var(--accent);
+  color: var(--accent-on);
+  border-color: var(--accent);
+}
+
+/* Paper §3 — saved-item sort, rendered as a small dropdown in the
+   Saved sheet header (lives next to the Compare-methods toggle). */
+.wb-sheet-actions {
+  display: flex; align-items: center; gap: 8px;
+}
+.wb-sort-dropdown {
+  position: relative;
+}
+.wb-sort-trigger {
+  height: 28px;
+  padding: 0 8px 0 10px;
+  background: transparent;
+  border: 0.5px solid var(--border);
+  border-radius: 9px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wb-sort-trigger:hover {
+  background: rgba(255,255,255,0.04);
+  border-color: rgba(160,230,212,0.30);
+}
+.wb-app[data-theme="light"] .wb-sort-trigger:hover {
+  background: rgba(0,0,0,0.04);
+  border-color: rgba(19,124,110,0.30);
+}
+.wb-sort-trigger-label { color: var(--text-2); }
+.wb-sort-trigger-value {
+  color: var(--accent);
+  font-weight: 600;
+}
+.wb-sort-trigger svg {
+  color: var(--text-2);
+  opacity: 0.75;
+  transition: transform 0.15s;
+}
+.wb-sort-trigger[aria-expanded="true"] svg { transform: rotate(180deg); }
+
+.wb-sort-menu {
+  position: absolute; top: calc(100% + 4px); right: 0;
+  min-width: 168px;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.38);
+  z-index: 800;
+  display: flex; flex-direction: column; gap: 2px;
+  animation: wbSortMenuIn 0.14s ease-out;
+}
+@keyframes wbSortMenuIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wb-sort-menu-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  font-size: 12.5px;
+  color: var(--text-1);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+.wb-sort-menu-item:hover:not(.is-disabled):not(.is-selected) {
+  background: rgba(160,230,212,0.12);
+  color: var(--accent);
+}
+.wb-app[data-theme="light"] .wb-sort-menu-item:hover:not(.is-disabled):not(.is-selected) {
+  background: rgba(19,124,110,0.10);
+}
+.wb-sort-menu-item.is-selected {
+  color: var(--accent);
+  background: rgba(160,230,212,0.10);
+}
+.wb-app[data-theme="light"] .wb-sort-menu-item.is-selected {
+  background: rgba(19,124,110,0.08);
+}
+.wb-sort-menu-item.is-disabled {
+  opacity: 0.40; cursor: not-allowed; color: var(--text-2);
+}
+.wb-sort-menu-check {
+  width: 14px; height: 14px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--accent);
+}
+.wb-sort-menu-label { line-height: 1.2; }
+
+.wb-layers, .wb-theme, .wb-fab {
+  background: var(--surface-1); border: none; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+}
+.wb-layers {
+  position: absolute; top: 116px; right: 12px;
+  width: 44px; height: 44px; border-radius: 22px; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); transition: opacity 0.2s;
+}
+.wb-method-tag {
+  position: absolute; top: 124px; right: 64px;
+  background: var(--surface-1); border-radius: 14px; padding: 4px 10px;
+  font-size: 11px; color: var(--accent); z-index: 500; font-weight: 500;
+  transition: opacity 0.2s;
+}
+.wb-weather {
+  position: absolute; top: 120px; left: 12px;
+  background: var(--surface-1); border-radius: 16px; padding: 6px 12px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-1); font-weight: 500;
+  z-index: 500;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  transition: opacity 0.2s;
+}
+.wb-weather svg { color: var(--accent); }
+.wb-weather-temp { color: var(--text-1); }
+.wb-weather-sep  { opacity: 0.4; }
+.wb-weather-time { color: var(--text-1); font-variant-numeric: tabular-nums; }
+.wb-fabs {
+  position: absolute; right: 12px; bottom: 276px;
+  display: flex; flex-direction: column; gap: 10px; z-index: 500;
+  transition: bottom 0.32s cubic-bezier(0.2,0.8,0.2,1), opacity 0.2s;
+}
+.wb-fab {
+  width: 50px; height: 50px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-1);
+}
+.wb-theme {
+  position: absolute; left: 12px; bottom: 276px;
+  width: 50px; height: 50px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--accent); z-index: 500;
+  transition: bottom 0.32s cubic-bezier(0.2,0.8,0.2,1);
+}
+
+.wb-sheet {
+  position: absolute; left: 0; right: 0; bottom: 60px;
+  background: var(--surface-2);
+  border-top-left-radius: 18px; border-top-right-radius: 18px;
+  z-index: 600;
+  transform: translateY(calc(100% - 200px));
+  transition: transform 0.32s cubic-bezier(0.2,0.8,0.2,1);
+  height: calc(100% - 60px - 28px);
+  display: flex; flex-direction: column;
+  box-shadow: 0 -4px 18px rgba(0,0,0,0.22);
+}
+.wb-sheet.dragging { transition: none; }
+.wb-handle-area {
+  padding: 12px 0 6px; display: flex; justify-content: center;
+  cursor: grab; touch-action: none;
+}
+.wb-handle-area:active { cursor: grabbing; }
+.wb-handle { width: 36px; height: 4px; background: var(--handle); border-radius: 2px; }
+.wb-sheet-header {
+  padding: 4px 16px 12px; display: flex; align-items: center; justify-content: space-between;
+}
+.wb-sheet-title { font-size: 18px; font-weight: 500; }
+.wb-segmented {
+  margin: 0 12px 12px; background: var(--surface-1); border-radius: 12px;
+  padding: 3px; display: flex;
+}
+.wb-seg {
+  flex: 1; text-align: center; padding: 9px 4px;
+  font-size: 12px; font-weight: 500; border-radius: 9px;
+  cursor: pointer; color: var(--text-2);
+  background: transparent; border: none;
+}
+.wb-seg.active { background: var(--surface-2); color: var(--text-1); }
+.wb-app[data-theme="light"] .wb-seg.active { background: #eef1f5; }
+.wb-list { flex: 1; overflow-y: auto; padding: 0 12px 16px; scrollbar-width: thin; }
+.wb-empty { padding: 40px 16px; text-align: center; color: var(--text-2); font-size: 13px; line-height: 1.5; }
+.wb-empty em { color: var(--text-1); font-style: normal; }
+.wb-empty-hint { margin-top: 6px; font-size: 12px; opacity: 0.75; }
+.wb-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 12px 4px; border-bottom: 0.5px solid var(--border);
+  cursor: pointer; transition: opacity 0.25s, transform 0.25s;
+}
+.wb-item:last-child { border-bottom: none; }
+.wb-item-icon {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.wb-item-main { flex: 1; min-width: 0; }
+.wb-item-name-row {
+  display: flex; align-items: center; gap: 6px;
+  min-width: 0; flex-wrap: wrap;
+}
+.wb-item-name { font-size: 14px; font-weight: 500; }
+.wb-item-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+/* Paper §3 — type badge pill (bookmark / ticket / map_pin / note) */
+.wb-type-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px;
+  background: var(--surface-1);
+  color: var(--text-2);
+  border-radius: 9px;
+  font-size: 10px; font-weight: 600;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  border: 0.5px solid var(--border);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.wb-type-badge svg { opacity: 0.85; }
+.wb-type-badge-label { line-height: 1; }
+/* Tickets are time-sensitive — give them an accent highlight so they pop. */
+.wb-type-badge--ticket {
+  background: rgba(160,230,212,0.16);
+  color: var(--accent);
+  border-color: rgba(160,230,212,0.30);
+}
+.wb-app[data-theme="light"] .wb-type-badge--ticket {
+  background: rgba(19,124,110,0.12);
+  color: var(--accent);
+  border-color: rgba(19,124,110,0.30);
+}
+.wb-item-reason {
+  font-size: 11px; color: var(--accent); margin-top: 4px;
+  display: flex; align-items: center; gap: 4px;
+}
+.wb-item-score { font-size: 12px; color: var(--text-2); align-self: center; font-weight: 500; }
+.wb-item-delete {
+  background: transparent; border: none; cursor: pointer;
+  padding: 8px; align-self: center; display: flex; border-radius: 50%;
+  color: #e0413f;
+}
+.wb-item-delete:hover { background: rgba(224,65,63,0.12); }
+
+/* Bottom-nav styles live in components/TabBar.jsx (shared with TripPage). */
+
+.wb-toast {
+  position: absolute; bottom: 76px; left: 50%; transform: translateX(-50%);
+  background: var(--text-1); color: var(--bg);
+  padding: 10px 18px; border-radius: 20px; font-size: 13px; font-weight: 500;
+  z-index: 800; white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.22);
+  animation: wbToast 0.2s ease-out;
+}
+@keyframes wbToast { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+/* mode-driven hiding -------------------------------------------------- */
+/* Saved view keeps search + pills visible (Paper §3 re-finding filters)
+   but hides map-only chrome (layers, method tag, weather). Add view
+   hides everything because the add-card overlay covers the top. */
+.wb-app[data-mode="saved"] .wb-layers,
+.wb-app[data-mode="saved"] .wb-method-tag,
+.wb-app[data-mode="saved"] .wb-weather,
+.wb-app[data-mode="add"]   .wb-search-area,
+.wb-app[data-mode="add"]   .wb-layers,
+.wb-app[data-mode="add"]   .wb-method-tag,
+.wb-app[data-mode="add"]   .wb-weather {
+  opacity: 0; pointer-events: none;
+}
+
+/* add-card slides up; sheet tucks away ------------------------------- */
+.wb-add-card {
+  position: absolute; left: 0; right: 0; bottom: 60px;
+  background: var(--surface-2);
+  border-top-left-radius: 18px; border-top-right-radius: 18px;
+  z-index: 600; padding: 16px 16px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+  transform: translateY(100%); transition: transform 0.32s cubic-bezier(0.2,0.8,0.2,1);
+  box-shadow: 0 -4px 18px rgba(0,0,0,0.22);
+  max-height: calc(100% - 60px - 28px); overflow-y: auto;
+}
+.wb-app[data-mode="add"] .wb-add-card { transform: translateY(0); }
+.wb-app[data-mode="add"] .wb-sheet { transform: translateY(120%); }
+.wb-add-head { display: flex; align-items: center; justify-content: space-between; }
+.wb-add-title { font-size: 18px; font-weight: 500; }
+.wb-add-x {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--surface-1);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text-1); border: none;
+}
+.wb-add-loc {
+  background: var(--surface-1); border-radius: 12px;
+  padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+}
+.wb-add-loc-text { flex: 1; font-size: 13px; }
+.wb-add-loc-text .sub { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+.wb-input {
+  background: var(--surface-1); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 12px; font-size: 14px;
+  color: var(--text-1); outline: none;
+}
+.wb-input::placeholder { color: var(--text-2); }
+.wb-cat-label {
+  font-size: 11px; color: var(--text-2);
+  letter-spacing: 0.4px; text-transform: uppercase;
+}
+.wb-cat-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.wb-cat-chip {
+  padding: 7px 12px; background: var(--surface-1);
+  border: 0.5px solid var(--border); border-radius: 14px;
+  font-size: 12px; color: var(--text-1); cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+}
+.wb-cat-chip.active { background: #c8e6d8; color: #0e3a31; border-color: transparent; }
+.wb-save-btn {
+  height: 48px; background: var(--accent); color: var(--accent-on);
+  border: none; border-radius: 24px; font-size: 15px; font-weight: 500;
+  cursor: pointer; margin-top: 4px;
+}
+
+/* ===== phase 3 ============================================== */
+
+/* Swipeable rows — make sure they cooperate with vertical scrolling */
+.wb-swipeable { touch-action: pan-y; will-change: transform; }
+
+.wb-fab.is-active {
+  background: var(--accent); color: var(--accent-on);
+}
+.wb-fab.is-active svg { color: var(--accent-on); }
+
+/* ============== NAV PANEL (replaces sheet content while routing) ============== */
+.wb-nav-header {
+  padding: 4px 12px 12px; display: flex; align-items: center; gap: 12px;
+}
+.wb-nav-back {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-1); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wb-nav-back:hover { background: var(--surface-1); }
+.wb-nav-header-text { flex: 1; min-width: 0; }
+.wb-nav-header-title {
+  font-size: 17px; font-weight: 600; color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.wb-nav-header-sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+.wb-nav-modes {
+  margin: 0 12px 16px; display: flex; gap: 4px;
+  background: var(--surface-1); padding: 4px; border-radius: 14px;
+}
+.wb-nav-mode {
+  flex: 1; height: 56px; border-radius: 11px;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px;
+  transition: background 0.15s, color 0.15s;
+}
+.wb-nav-mode:hover { color: var(--text-1); }
+.wb-nav-mode.active {
+  background: var(--accent); color: var(--accent-on);
+}
+.wb-nav-mode-time {
+  font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+
+.wb-nav-summary {
+  margin: 0 12px 14px; padding: 16px;
+  background: var(--surface-1); border-radius: 14px;
+}
+.wb-nav-summary-time {
+  font-size: 28px; font-weight: 600; color: var(--text-1);
+  line-height: 1.1;
+}
+.wb-nav-summary-loading { font-size: 18px; color: var(--text-2); font-weight: 500; }
+.wb-nav-summary-sub {
+  font-size: 13px; color: var(--text-2); margin-top: 6px;
+}
+
+.wb-nav-legs {
+  margin: 0 12px 14px; padding: 6px 4px;
+  background: var(--surface-1); border-radius: 14px;
+  max-height: 240px; overflow-y: auto;
+}
+.wb-nav-leg {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+}
+.wb-nav-leg + .wb-nav-leg {
+  border-top: 0.5px solid var(--border);
+}
+.wb-nav-leg-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-1); flex-shrink: 0;
+}
+.wb-nav-leg-transit .wb-nav-leg-icon { background: var(--accent); color: var(--accent-on); }
+.wb-nav-leg-main { flex: 1; min-width: 0; }
+.wb-nav-leg-label { font-size: 13px; color: var(--text-1); font-weight: 500; }
+.wb-nav-leg-meta  { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+.wb-nav-actions {
+  margin: auto 12px 14px; display: flex; gap: 8px;
+}
+.wb-nav-cta-primary {
+  flex: 2; height: 44px; border-radius: 22px;
+  background: var(--accent); color: var(--accent-on);
+  border: none; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 14px; font-weight: 600;
+}
+.wb-nav-cta-secondary {
+  flex: 1; height: 44px; border-radius: 22px;
+  background: var(--surface-1); color: var(--text-1);
+  border: none; cursor: pointer;
+  font-size: 14px; font-weight: 500;
+}
+
+/* Detail panel — the "flipbook" overlay */
+.wb-detail {
+  position: absolute; inset: 0;
+  background: var(--bg);
+  z-index: 900;
+  display: flex; flex-direction: column;
+  animation: wbDetailIn 0.28s cubic-bezier(0.2,0.8,0.2,1);
+}
+@keyframes wbDetailIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wb-detail-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(0,0,0,0.4); color: #ffffff;
+  border: none; cursor: pointer; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+}
+.wb-detail-page {
+  flex: 1; display: flex; flex-direction: column;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+@media (hover: hover) and (pointer: fine) {
+  .wb-detail-page { touch-action: auto !important; }
+}
+.wb-detail-hero {
+  min-height: 240px; padding: 36px 22px 22px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  color: #ffffff;
+  position: relative;
+}
+.wb-detail-cat {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: rgba(0,0,0,0.25); backdrop-filter: blur(6px);
+  padding: 5px 11px; border-radius: 12px;
+  font-size: 11px; font-weight: 500;
+  align-self: flex-start;
+  text-transform: uppercase; letter-spacing: 0.6px;
+}
+.wb-detail-name {
+  margin: 12px 0 4px;
+  font-size: 28px; font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+}
+.wb-detail-address {
+  font-size: 13px; opacity: 0.85;
+}
+.wb-detail-body {
+  padding: 24px 22px 36px;
+  display: flex; flex-direction: column; gap: 22px;
+}
+.wb-detail-desc {
+  font-size: 15px; line-height: 1.55;
+  color: var(--text-1);
+  margin: 0;
+}
+
+/* Paper §3 — tag chips on the detail panel (read-only display) */
+.wb-detail-tags {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.wb-detail-tag {
+  display: inline-flex; align-items: center;
+  padding: 4px 9px;
+  background: var(--surface-1);
+  color: var(--text-2);
+  border-radius: 10px;
+  font-size: 11px; font-weight: 500;
+  line-height: 1.4;
+  border: 0.5px solid var(--border);
+}
+
+/* Paper §3 — ticket event countdown (only shown for itemType=ticket) */
+.wb-ticket-countdown {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--surface-1);
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+}
+.wb-ticket-countdown svg { flex-shrink: 0; }
+.wb-ticket-countdown-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wb-ticket-countdown-main {
+  font-size: 14px; font-weight: 600;
+  color: var(--text-1);
+  line-height: 1.2;
+}
+.wb-ticket-countdown-sub {
+  font-size: 11.5px; color: var(--text-2);
+}
+/* Future events: mint highlight. "tomorrow"/"today" are bolder. */
+.wb-ticket-countdown--future,
+.wb-ticket-countdown--future-bold {
+  background: rgba(160,230,212,0.10);
+  border-color: rgba(160,230,212,0.30);
+}
+.wb-ticket-countdown--future svg,
+.wb-ticket-countdown--future-bold svg { color: var(--accent); }
+.wb-ticket-countdown--future-bold .wb-ticket-countdown-main {
+  color: var(--accent);
+}
+/* Past events: muted */
+.wb-ticket-countdown--past { opacity: 0.7; }
+.wb-ticket-countdown--past svg { color: var(--text-2); }
+.wb-ticket-countdown--past .wb-ticket-countdown-main { color: var(--text-2); }
+.wb-detail-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 14px 4px;
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+}
+.wb-stat { text-align: center; }
+.wb-stat-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--text-2); margin-bottom: 4px;
+}
+.wb-stat-val {
+  font-size: 15px; font-weight: 600; color: var(--text-1);
+}
+.wb-detail-actions { display: flex; gap: 10px; }
+.wb-detail-primary {
+  flex: 1; height: 48px;
+  background: var(--accent); color: var(--accent-on);
+  border: none; border-radius: 24px;
+  font-size: 15px; font-weight: 500;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.wb-detail-secondary {
+  width: 48px; height: 48px;
+  background: var(--surface-1); color: #e0413f;
+  border: 0.5px solid var(--border); border-radius: 50%;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.wb-detail-arrow {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px; border-radius: 50%;
+  background: rgba(0,0,0,0.4); color: #ffffff;
+  border: none; cursor: pointer; z-index: 5;
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(6px);
+  transition: opacity 0.18s;
+}
+.wb-detail-arrow.left  { left: 12px; }
+.wb-detail-arrow.right { right: 12px; }
+.wb-detail-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
+.wb-detail-dots {
+  position: absolute; bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px; font-weight: 500;
+  background: rgba(0,0,0,0.45); color: #ffffff;
+  padding: 4px 10px; border-radius: 10px;
+  backdrop-filter: blur(6px);
+  z-index: 5;
+}
+
+/* Proactive notification banner (W4 brief; paper §6.3) ------------- */
+.wb-proactive {
+  position: absolute; top: 12px; left: 12px; right: 12px;
+  background: var(--accent); color: var(--accent-on);
+  border-radius: 16px; padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+  z-index: 760;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+  cursor: pointer;
+  animation: wbProactiveIn 0.32s cubic-bezier(0.2,0.8,0.2,1);
+}
+.wb-proactive svg { flex-shrink: 0; }
+.wb-proactive-text { flex: 1; min-width: 0; }
+.wb-proactive-title { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.wb-proactive-sub { font-size: 12px; opacity: 0.78; margin-top: 2px; line-height: 1.3; }
+.wb-proactive-x {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(0,0,0,0.12); border: none; cursor: pointer;
+  color: var(--accent-on);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wb-proactive-x:hover { background: rgba(0,0,0,0.2); }
+@keyframes wbProactiveIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.wb-app:has(.wb-proactive) .wb-search-area { top: 76px; }
+
+/* ExplanationBreakdown — inline section (W4 brief; paper §4) ------ */
+/* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
+.wb-explain {
+  margin: 16px 0 0;
+  padding: 14px 14px 10px;
+  background: var(--surface-1);
+  border-radius: 16px;
+}
+.wb-explain-title {
+  font-size: 12px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-2);
+  margin-bottom: 12px;
+}
+.wb-explain-list { display: flex; flex-direction: column; gap: 10px; }
+.wb-explain-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 12px;
+}
+.wb-explain-row[data-strength="strong"] { background: rgba(160,230,212,0.10); }
+.wb-explain-row[data-strength="none"]   { opacity: 0.5; }
+.wb-explain-icon {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(160,230,212,0.15); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wb-explain-row[data-strength="none"] .wb-explain-icon {
+  background: rgba(255,255,255,0.04); color: var(--text-2);
+}
+.wb-explain-body { flex: 1; min-width: 0; }
+.wb-explain-label {
+  font-size: 13px; font-weight: 600; color: var(--text-1);
+  line-height: 1.25;
+}
+.wb-explain-detail {
+  font-size: 11.5px; color: var(--text-2); margin-top: 2px;
+  line-height: 1.35;
+}
+.wb-explain-meter { display: flex; gap: 3px; flex-shrink: 0; }
+.wb-explain-meter span {
+  width: 5px; height: 14px; border-radius: 2px;
+  background: rgba(255,255,255,0.08);
+}
+.wb-explain-meter span[data-on="true"] { background: var(--accent); }
+.wb-explain-trigger {
+  display: flex; align-items: center; gap: 6px;
+  margin: 14px auto 4px;
+  background: rgba(160,230,212,0.10);
+  border: 1px solid rgba(160,230,212,0.25);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 11.5px; font-weight: 500;
+  padding: 8px 14px; border-radius: 10px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wb-explain-trigger:hover {
+  background: rgba(160,230,212,0.18);
+  border-color: rgba(160,230,212,0.40);
+}
+
+/* AttributionModal — nested modal over DetailPanel ----------------- */
+.wb-attr-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(2px);
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: wbAttrBackdropIn 0.2s ease-out;
+}
+.wb-attr-modal {
+  position: relative;
+  width: 100%; max-width: 420px;
+  max-height: 85vh; overflow-y: auto;
+  background: var(--surface-1);
+  border-radius: 18px;
+  padding: 24px 22px 20px;
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  color: var(--text-1);
+  animation: wbAttrModalIn 0.24s cubic-bezier(0.2,0.8,0.2,1);
+}
+.wb-attr-close {
+  position: absolute; top: 14px; right: 14px;
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.06); border: none;
+  color: var(--text-1); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.wb-attr-close:hover { background: rgba(255,255,255,0.12); }
+.wb-attr-eyebrow {
+  font-size: 10.5px;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+.wb-attr-h {
+  margin: 0 0 14px;
+  font-size: 18px; font-weight: 600;
+  color: var(--text-1);
+}
+.wb-attr-lede {
+  font-size: 13px; line-height: 1.55;
+  color: var(--text-2);
+  margin: 0 0 16px;
+}
+.wb-attr-list {
+  list-style: none; padding: 0; margin: 0 0 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.wb-attr-list li {
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.18);
+  border-radius: 10px;
+}
+.wb-attr-li-head {
+  font-size: 12.5px; color: var(--text-1);
+  margin-bottom: 4px;
+}
+.wb-attr-li-head b { color: var(--accent); font-weight: 600; }
+.wb-attr-li-body {
+  font-size: 11.5px; color: var(--text-2);
+  line-height: 1.5;
+}
+.wb-attr-domain {
+  font-size: 11.5px; color: var(--text-2);
+  line-height: 1.55;
+  margin: 0;
+  padding: 12px;
+  background: rgba(160,230,212,0.06);
+  border-radius: 10px;
+}
+.wb-attr-domain b { color: var(--text-1); font-weight: 600; }
+@keyframes wbAttrBackdropIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes wbAttrModalIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Method Compare toggle button --------------------------------------- */
+.wb-compare-toggle {
+  background: rgba(160,230,212,0.10);
+  border: 1px solid rgba(160,230,212,0.25);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 11.5px; font-weight: 500;
+  padding: 6px 12px; border-radius: 9px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.wb-compare-toggle:hover {
+  background: rgba(160,230,212,0.18);
+  border-color: rgba(160,230,212,0.40);
+}
+.wb-compare-toggle[aria-pressed="true"] {
+  background: var(--accent); color: var(--accent-on);
+  border-color: var(--accent);
+}
+
+/* MethodCompare component ------------------------------------------- */
+/* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
+.wb-compare {
+  padding: 8px 0 16px;
+}
+.wb-compare-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 4px 12px;
+}
+.wb-compare-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: 0.02em;
+}
+.wb-compare-info {
+  display: flex; align-items: center; gap: 5px;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--accent);
+  font-size: 11px;
+  padding: 4px 8px; border-radius: 8px;
+  transition: background 0.15s;
+}
+.wb-compare-info:hover { background: rgba(160,230,212,0.10); }
+
+.wb-compare-context-strip {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px; padding: 0 4px 14px;
+}
+.wb-compare-context-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 10px 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text-2);
+  transition: all 0.15s;
+}
+.wb-compare-context-btn[data-active="true"] {
+  background: rgba(160,230,212,0.12);
+  border-color: rgba(160,230,212,0.40);
+  color: var(--text-1);
+}
+.wb-compare-context-btn[data-active="true"] .wb-compare-context-icon {
+  color: var(--accent);
+}
+.wb-compare-context-icon {
+  color: var(--text-2);
+}
+.wb-compare-context-label {
+  font-size: 12px; font-weight: 600;
+}
+.wb-compare-context-sub {
+  font-size: 10px; opacity: 0.75;
+  text-align: center; line-height: 1.2;
+}
+
+.wb-compare-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.wb-compare-col {
+  background: var(--surface-1);
+  border-radius: 12px;
+  padding: 10px 8px 8px;
+  min-height: 200px;
+  display: flex; flex-direction: column;
+}
+.wb-compare-col-head {
+  text-align: center; padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  margin-bottom: 8px;
+}
+.wb-compare-col-name {
+  font-size: 13px; font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+}
+.wb-compare-col-section {
+  font-size: 10px; color: var(--text-2);
+  margin-top: 2px;
+}
+.wb-compare-col-body {
+  flex: 1; display: flex; flex-direction: column; gap: 6px;
+}
+.wb-compare-loading {
+  display: flex; justify-content: center; align-items: center;
+  padding: 20px 0;
+  color: var(--text-2);
+}
+.wb-compare-spin {
+  animation: wbCompareSpin 1s linear infinite;
+}
+@keyframes wbCompareSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.wb-compare-empty {
+  text-align: center; font-size: 11px;
+  color: var(--text-2); padding: 20px 0;
+}
+.wb-compare-item {
+  display: flex; gap: 6px; align-items: flex-start;
+  padding: 6px 4px;
+}
+.wb-compare-item-rank {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: rgba(160,230,212,0.12);
+  color: var(--accent);
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.wb-compare-item-body { flex: 1; min-width: 0; }
+.wb-compare-item-name {
+  font-size: 11.5px; font-weight: 500;
+  color: var(--text-1);
+  line-height: 1.25;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.wb-compare-item-score {
+  font-size: 10px; color: var(--text-2);
+  margin-top: 2px;
+}
+.wb-compare-note {
+  font-size: 10.5px;
+  color: var(--text-2);
+  font-style: italic;
+  text-align: center;
+  padding: 12px 8px 4px;
+  line-height: 1.5;
+}
+
+
+
+/* ============================================================
+   Originated in TripPage.jsx ScopedStyles()
+   ============================================================ */
+.wb-trip {
+  --bg: #1a2433; --surface-1: #28323f; --surface-2: #1c2530;
+  --text-1: #e8eaed; --text-2: #9aa0a6;
+  --border: rgba(255,255,255,0.08);
+  --accent: #a0e6d4; --accent-on: #0e3a31;
+  position: fixed; inset: 0;
+  background: var(--bg); color: var(--text-1);
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+.wb-trip * { box-sizing: border-box; }
+
+.wb-trip-header {
+  position: relative;
+  max-width: 440px; margin: 0 auto;
+  padding: 22px 20px 18px;
+  display: flex; align-items: flex-start; gap: 12px;
+  border-bottom: 0.5px solid var(--border);
+  background: var(--surface-2);
+}
+.wb-trip-back {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--surface-1);
+  color: var(--text-1);
+  display: inline-flex; align-items: center; justify-content: center;
+  text-decoration: none; flex-shrink: 0;
+  transition: background 0.15s;
+}
+.wb-trip-back:hover { background: rgba(255,255,255,0.10); }
+.wb-trip-header-text { flex: 1; min-width: 0; }
+.wb-trip-title {
+  margin: 0; font-size: 24px; font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.wb-trip-subtitle {
+  margin: 4px 0 0;
+  font-size: 12.5px; color: var(--text-2);
+  font-style: italic; line-height: 1.4;
+}
+.wb-trip-date {
+  margin-top: 8px;
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--accent);
+  font-weight: 600;
+}
+
+.wb-trip-body {
+  max-width: 440px; margin: 0 auto;
+  /* Bottom padding leaves room for the shared TabBar (60px high). */
+  padding: 22px 20px calc(36px + 60px);
+}
+
+.wb-trip-list {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  gap: 0;
+}
+.wb-trip-stop {
+  display: flex; gap: 12px;
+  padding: 0 0 18px;
+  position: relative;
+}
+.wb-trip-stop.is-last { padding-bottom: 6px; }
+
+.wb-trip-rail {
+  flex: 0 0 16px;
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 10px;
+}
+.wb-trip-dot {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(160,230,212,0.18);
+  flex-shrink: 0;
+}
+.wb-trip-line {
+  flex: 1; width: 2px;
+  background: linear-gradient(to bottom, rgba(160,230,212,0.65), rgba(160,230,212,0.18));
+  margin-top: 6px;
+}
+
+.wb-trip-card {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px 14px 12px;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  border-radius: 14px;
+  color: inherit; text-decoration: none;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.wb-trip-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(160,230,212,0.35);
+  box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+}
+.wb-trip-card-time {
+  font-size: 13px; font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.wb-trip-card-head {
+  display: flex; align-items: center; gap: 8px;
+  flex-wrap: wrap;
+}
+.wb-trip-card-name {
+  margin: 0;
+  font-size: 17px; font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-1);
+}
+.wb-trip-card-cat {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--text-2);
+}
+.wb-trip-card-cat svg { opacity: 0.85; }
+.wb-trip-card-sep { opacity: 0.5; }
+.wb-trip-card-slot { color: var(--text-2); }
+.wb-trip-card-walk {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; color: var(--text-1);
+  opacity: 0.85;
+}
+.wb-trip-card-walk svg { color: var(--accent); }
+.wb-trip-card-reason {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; color: var(--accent);
+  line-height: 1.35;
+}
+.wb-trip-card-reason svg { flex-shrink: 0; }
+
+.wb-trip-footer {
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: rgba(160,230,212,0.08);
+  border: 0.5px solid rgba(160,230,212,0.30);
+  border-radius: 14px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px;
+  color: var(--text-1);
+}
+.wb-trip-footer svg { color: var(--accent); flex-shrink: 0; }
+.wb-trip-footer b { color: var(--accent); font-weight: 700; }
+
+.wb-trip-empty {
+  margin-top: 40px;
+  padding: 32px 24px;
+  background: var(--surface-1);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px;
+}
+.wb-trip-empty svg { color: var(--accent); }
+.wb-trip-empty p { margin: 0; line-height: 1.5; }
+.wb-trip-empty-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
+.wb-trip-empty-sub { font-size: 12.5px; color: var(--text-2); }
+.wb-trip-empty-cta {
+  margin-top: 8px;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 16px;
+  background: var(--accent); color: var(--accent-on);
+  border-radius: 11px;
+  font-size: 13px; font-weight: 600;
+  text-decoration: none;
+  transition: filter 0.15s;
+}
+.wb-trip-empty-cta:hover { filter: brightness(1.06); }
+
+@media (min-width: 480px) {
+  .wb-trip-title { font-size: 26px; }
+}
+
+
+
+/* ============================================================
+   Originated in TabBar.jsx TabBarStyles()
+   ============================================================ */
+.wb-nav {
+  position: fixed; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 440px; height: 60px;
+  background: var(--surface-3, #14202d);
+  display: flex;
+  border-top: 0.5px solid var(--border, rgba(255,255,255,0.08));
+  z-index: 700;
+}
+.wb-nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 2px; cursor: pointer;
+  color: var(--text-2, #9aa0a6); font-size: 11px;
+  background: transparent; border: none;
+  text-decoration: none;
+  font-family: inherit;
+}
+.wb-nav-item .nav-icon {
+  padding: 3px 14px; border-radius: 12px;
+  transition: background 0.18s; display: flex;
+}
+.wb-nav-item.active { color: var(--accent, #a0e6d4); }
+.wb-nav-item.active .nav-icon { background: var(--accent-bg, rgba(160,230,212,0.18)); }
