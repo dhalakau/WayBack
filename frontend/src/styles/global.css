@@ -449,10 +449,11 @@ body { font-family: var(--font-body); }
 }
 .wb-cat-chip.active { background: var(--ink); color: var(--paper); border-color: transparent; }
 .wb-save-btn {
-  height: 48px; background: var(--ink); color: var(--accent-on);
+  height: 48px; background: var(--pin); color: var(--accent-on);
   border: none; border-radius: 24px; font-size: 15px; font-weight: 500;
   cursor: pointer; margin-top: 4px;
 }
+.wb-save-btn:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
 
 /* ===== phase 3 ============================================== */
 
@@ -460,9 +461,10 @@ body { font-family: var(--font-body); }
 .wb-swipeable { touch-action: pan-y; will-change: transform; }
 
 .wb-fab.is-active {
-  background: var(--ink); color: var(--accent-on);
+  background: var(--pin); color: var(--accent-on);
 }
 .wb-fab.is-active svg { color: var(--accent-on); }
+.wb-fab.is-active:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
 
 /* ============== NAV PANEL (replaces sheet content while routing) ============== */
 .wb-nav-header {
@@ -545,11 +547,12 @@ body { font-family: var(--font-body); }
 }
 .wb-nav-cta-primary {
   flex: 2; height: 44px; border-radius: 22px;
-  background: var(--ink); color: var(--accent-on);
+  background: var(--pin); color: var(--accent-on);
   border: none; cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 6px;
   font-size: 14px; font-weight: 600;
 }
+.wb-nav-cta-primary:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
 .wb-nav-cta-secondary {
   flex: 1; height: 44px; border-radius: 22px;
   background: var(--paper-soft); color: var(--ink);
@@ -686,12 +689,13 @@ body { font-family: var(--font-body); }
 .wb-detail-actions { display: flex; gap: 10px; }
 .wb-detail-primary {
   flex: 1; height: 48px;
-  background: var(--ink); color: var(--accent-on);
+  background: var(--pin); color: var(--accent-on);
   border: none; border-radius: 24px;
   font-size: 15px; font-weight: 500;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
+.wb-detail-primary:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
 .wb-detail-secondary {
   width: 48px; height: 48px;
   background: var(--paper-soft); color: #e0413f;
@@ -725,7 +729,7 @@ body { font-family: var(--font-body); }
 /* Proactive notification banner (W4 brief; paper §6.3) ------------- */
 .wb-proactive {
   position: absolute; top: 12px; left: 12px; right: 12px;
-  background: var(--ink); color: var(--accent-on);
+  background: var(--pin); color: var(--accent-on);
   border-radius: 16px; padding: 12px 14px;
   display: flex; align-items: center; gap: 12px;
   z-index: 760;
@@ -733,6 +737,7 @@ body { font-family: var(--font-body); }
   cursor: pointer;
   animation: wbProactiveIn 0.32s cubic-bezier(0.2,0.8,0.2,1);
 }
+.wb-proactive:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
 .wb-proactive svg { flex-shrink: 0; }
 .wb-proactive-text { flex: 1; min-width: 0; }
 .wb-proactive-title { font-size: 14px; font-weight: 600; line-height: 1.25; }
@@ -1221,13 +1226,13 @@ body { font-family: var(--font-body); }
   margin-top: 8px;
   display: inline-flex; align-items: center; gap: 6px;
   padding: 9px 16px;
-  background: var(--ink); color: var(--accent-on);
+  background: var(--pin); color: var(--accent-on);
   border-radius: 11px;
   font-size: 13px; font-weight: 600;
   text-decoration: none;
-  transition: filter 0.15s;
+  transition: background 0.15s;
 }
-.wb-trip-empty-cta:hover { filter: brightness(1.06); }
+.wb-trip-empty-cta:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
 
 @media (min-width: 480px) {
   .wb-trip-title { font-size: 26px; }
