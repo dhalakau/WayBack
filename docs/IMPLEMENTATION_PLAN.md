@@ -40,15 +40,33 @@ The 44-day window from plan start to final presentation breaks cleanly into thre
 
 **Target deliverable for M2 on 6/1:** A working WayBack frontend that visually realizes the Editorial Paper aesthetic direction, runs on desktop and mobile, and clears every anti-pattern banned in DESIGN.md.
 
+**Progress as of 2026-05-17 (single-day sprint):**
+
+- ✅ Phase A days 5/17–5/22 fully shipped in 24 commits: Phase 1 cleanup, ScopedStyles consolidation, `/impeccable polish`, `/impeccable typeset`, `/impeccable colorize` Stage 1 + Stage 2
+- ✅ Bonus work outside original plan: full-cream Editorial Paper pivot (Positron tiles, cream map, pin-red primary CTAs, cream TabBar, marker desaturation in two passes, restored proactive banner with accent treatment), top overlay stack fix to prevent proactive-banner collision, three-method copy polish (Category match / Text relevance / Smart context → Similar / Relevant / Contextual with editorial subtext), repo housekeeping (docs/ folder, PDF removed, .gitignore cleanup)
+- ⏳ Remaining: 5/23–5/31 (desktop split-layout, detail hero polish, signature motion, a11y hardening, re-audit, M2 finalize)
+- **Status: ~7 days ahead of original schedule.** Week 1 calendar dates retained below as planning record; "✅ DONE 2026-05-17" markers show which day's task was pulled into the sprint.
+
 ### Week 1: Cleanup, Polish, Typography, Color
 
 | Date | Task | Domain | Estimated hours |
 |---|---|---|---|
-| 2026-05-17 | Update DESIGN.md (Attribution + Decision Log) for new components (TripPage, TabBar, TypeBadge, TicketCountdown). Phase 1 cleanup steps 1 to 5: delete dead files (FeedPage, ItemDetailPage, Layout, App.css), uninstall unused dependencies, fix page title and meta, gitignore .DS_Store. | UIUX (governance) + Frontend | 3 |
-| 2026-05-18 | Phase 1 step 6: Consolidate four ScopedStyles blocks into one global stylesheet (`src/styles/global.css`). Keep current token names for now; structural refactor only. Verify with `npx vite build`. | Frontend (refactor) | 4 |
-| 2026-05-19 | `/impeccable polish` sweep: replace all Sparkles icon uses with Compass, MapPin-filled, or remove. Replace all em dashes in UI string literals with periods, colons, or parentheses. Remove decorative chrome opacity micro-fades. | UIUX (anti-pattern enforcement) | 3 |
-| 2026-05-20 | `/impeccable typeset`: load Fraunces (display), Public Sans (body and UI), JetBrains Mono (numerals). Apply 12 / 14 / 16 / 19 / 24 / 32 / 48 type scale. Retire the -apple-system font stack. | UIUX (typography system) | 4 |
-| 2026-05-21 to 2026-05-22 | `/impeccable colorize`: introduce Editorial Paper token system (--paper, --paper-soft, --paper-warm, --ink, --ink-soft, --rule, --pin, --pin-soft, --map-bg, --accent-fallback). Rename and remap existing tokens. Implement dark map plus cream chrome inversion. Replace 10 per-category diagonal gradients with single-color category washes. | UIUX (color system) | 8 |
+| 2026-05-17 | ✅ DONE 2026-05-17 — Update DESIGN.md (Attribution + Decision Log) for new components (TripPage, TabBar, TypeBadge, TicketCountdown). Phase 1 cleanup steps 1 to 5: delete dead files (FeedPage, ItemDetailPage, Layout, App.css), uninstall unused dependencies (incl. @vis.gl/react-google-maps, Tailwind setup), fix page title and meta description, gitignore .DS_Store. | UIUX (governance) + Frontend | 3 |
+| 2026-05-18 | ✅ DONE 2026-05-17 — Phase 1 step 6: Consolidate four ScopedStyles blocks into one global stylesheet (`src/styles/global.css`). Keep current token names for now; structural refactor only. Verify with `npx vite build`. | Frontend (refactor) | 4 |
+| 2026-05-19 | ✅ DONE 2026-05-17 — `/impeccable polish` sweep: replaced all Sparkles icon uses with Compass, MapPin, or removed across 8 sites. Replaced em dashes in UI string literals with periods, colons, or parentheses across 19 sites. Removed decorative chrome opacity micro-fades. | UIUX (anti-pattern enforcement) | 3 |
+| 2026-05-20 | ✅ DONE 2026-05-17 — `/impeccable typeset`: loaded Fraunces (display), Public Sans (body and UI), JetBrains Mono (numerals). Defined --text-xs through --text-3xl scale variables (12 / 14 / 16 / 19 / 24 / 32 / 48). Retired the -apple-system font stack. | UIUX (typography system) | 4 |
+| 2026-05-21 to 2026-05-22 | ✅ DONE 2026-05-17 — `/impeccable colorize` Stage 1 + Stage 2: defined 10 Editorial Paper tokens with WCAG annotations (--paper, --paper-soft, --paper-warm, --ink, --ink-soft, --rule, --pin, --pin-soft, --map-bg, --accent-fallback); lifted to :root, removed dark mode; mechanical surface/text/border rewrites (~135 sites); --accent classification + mint literal flips (45 sites); category gradients → single-color washes (10 categories). | UIUX (color system) | 8 |
+
+### Bonus work — not in original plan (2026-05-17)
+
+Shipped opportunistically once Week 1 cleared early. Captured here so the plan reflects actual delivered scope, not aspirational scope.
+
+| Item | Description | Domain |
+|---|---|---|
+| ✅ Full-cream Editorial Paper pivot | Replaced the originally planned dark-map + cream-chrome inversion with a unified full-cream surface. Switched Leaflet tiles to CartoDB Positron, lifted `--map-bg` to cream, flipped primary CTAs from ink to pin red, cream TabBar with pin active state, detail hero adopts cream paper. Desaturated map markers in two passes (55% mute across all categories, then surgical deepening for transport blue and park green outliers). Restored proactive banner with editorial accent treatment. Supersedes the "dark map plus cream chrome inversion" line in the 5/21–5/22 row above. | UIUX (color system) |
+| ✅ Top overlay stack layout fix | Wrapped `.wb-proactive` + `.wb-search-area` in a `.wb-top-overlay-stack` flex column so the proactive banner pushes the search bar and pill row down naturally instead of z-stacking on top of them. Dropped the ad-hoc `:has(.wb-proactive)` workaround. | Frontend (layout) |
+| ✅ Three-method copy polish | Retitled the comparison columns from algorithm-flavored "Category match / Text relevance / Smart context" to plain-voice editorial "Similar / Relevant / Contextual", each with a one-line Public Sans subtext mirroring the detail page's "WHY YOU MIGHT WANT THIS NOW" register. Paper §-ref reordered as smallest tertiary label. | UIUX (copy register) |
+| ✅ Repo housekeeping | Moved `DESIGN.md` and `IMPLEMENTATION_PLAN.md` into `docs/` (README stays at root per convention). Removed the 2016 Sappelli et al. research PDF from the repo working tree, added `*.pdf` + `2016_JASIST*` ignore rules, split the malformed `backend/results//package-lock.json` line into two clean patterns. No history rewrite. | Frontend (repo hygiene) |
 
 ### Week 2: Desktop Layout, Detail, Motion, A11y, M2 Submission
 
@@ -186,7 +204,11 @@ Git commit attribution for all frontend and UIUX work must consistently use the 
 
 The Decision Log in DESIGN.md and this implementation plan together form the design authorship record for the WayBack project. Both documents are committed to the repository under the author's identity and are the canonical evidence for design ownership disputes.
 
+### Sprint Log
+
+**2026-05-17 —** Phase A days 5/17–5/22 shipped in a single 24-commit sprint. Bonus work outside the original plan: full-cream Editorial Paper pivot (dark-map + cream-chrome inversion superseded by cream-map + cream-chrome with Positron tiles, pin-red accent CTAs, desaturated markers), top overlay stack fix to prevent proactive banner collision, three-method copy renamed to Similar / Relevant / Contextual editorial-subtext pattern, docs reorganized into `docs/`, research PDF removed from repo. Remaining Phase A scope (5/23–5/31) unchanged: desktop split-layout, detail hero polish, signature motion, a11y hardening, re-audit, M2 finalize. Sprint puts the project ~7 days ahead of the original schedule.
+
 ---
 
-Last updated: 2026-05-17 (revised to reflect actual TUM milestones: M2 on 6/1, M3 on 6/22, Final on 6/30)
+Last updated: 2026-05-17 (sprint progress recorded; original entry: revised to reflect actual TUM milestones: M2 on 6/1, M3 on 6/22, Final on 6/30)
 Author: Haichen Duan (Joan)
