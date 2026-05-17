@@ -20,12 +20,36 @@
  */
 
 
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300..700;1,400..600&family=Public+Sans:wght@400..700&family=JetBrains+Mono:wght@400..500&display=swap');
+
+/* ============================================================
+   Typography system (DESIGN.md §Type System)
+   Family vars are theme-independent, so they live at :root rather
+   than in the .wb-app / .wb-trip scopes which carry color tokens.
+   Scale vars are defined for forward use; existing font-size
+   declarations are deliberately NOT retrofitted in this pass
+   (Phase A 2026-05-26 detail polish covers that).
+   ============================================================ */
+:root {
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body:    'Public Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --text-xs:  12px;
+  --text-sm:  14px;
+  --text-base: 16px;
+  --text-lg:  19px;
+  --text-xl:  24px;
+  --text-2xl: 32px;
+  --text-3xl: 48px;
+}
+
 /* ============================================================
    Originated in MapPage.jsx ScopedStyles()
    ============================================================ */
 :root { color-scheme: dark; }
 html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+body { font-family: var(--font-body); }
 .leaflet-container { font-family: inherit; }
 
 .wb-app {
@@ -240,6 +264,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   position: absolute; top: 120px; left: 12px;
   background: var(--surface-1); border-radius: 16px; padding: 6px 12px;
   display: flex; align-items: center; gap: 6px;
+  font-family: var(--font-mono);
   font-size: 12px; color: var(--text-1); font-weight: 500;
   z-index: 500;
   box-shadow: 0 2px 6px rgba(0,0,0,0.18);
@@ -287,7 +312,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .wb-sheet-header {
   padding: 4px 16px 12px; display: flex; align-items: center; justify-content: space-between;
 }
-.wb-sheet-title { font-size: 18px; font-weight: 500; }
+.wb-sheet-title { font-size: 18px; font-weight: 500; font-family: var(--font-display); }
 .wb-segmented {
   margin: 0 12px 12px; background: var(--surface-1); border-radius: 12px;
   padding: 3px; display: flex;
@@ -319,7 +344,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   display: flex; align-items: center; gap: 6px;
   min-width: 0; flex-wrap: wrap;
 }
-.wb-item-name { font-size: 14px; font-weight: 500; }
+.wb-item-name { font-size: 14px; font-weight: 500; font-family: var(--font-display); }
 .wb-item-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; }
 
 /* Paper §3 — type badge pill (bookmark / ticket / map_pin / note) */
@@ -353,7 +378,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   font-size: 11px; color: var(--accent); margin-top: 4px;
   display: flex; align-items: center; gap: 4px;
 }
-.wb-item-score { font-size: 12px; color: var(--text-2); align-self: center; font-weight: 500; }
+.wb-item-score { font-family: var(--font-mono); font-size: 12px; color: var(--text-2); align-self: center; font-weight: 500; }
 .wb-item-delete {
   background: transparent; border: none; cursor: pointer;
   padding: 8px; align-self: center; display: flex; border-radius: 50%;
@@ -482,6 +507,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   background: var(--accent); color: var(--accent-on);
 }
 .wb-nav-mode-time {
+  font-family: var(--font-mono);
   font-size: 11px; font-weight: 500; font-variant-numeric: tabular-nums;
 }
 
@@ -490,6 +516,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   background: var(--surface-1); border-radius: 14px;
 }
 .wb-nav-summary-time {
+  font-family: var(--font-mono);
   font-size: 28px; font-weight: 600; color: var(--text-1);
   line-height: 1.1;
 }
@@ -582,6 +609,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 }
 .wb-detail-name {
   margin: 12px 0 4px;
+  font-family: var(--font-display);
   font-size: 28px; font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.4px;
@@ -660,6 +688,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   color: var(--text-2); margin-bottom: 4px;
 }
 .wb-stat-val {
+  font-family: var(--font-mono);
   font-size: 15px; font-weight: 600; color: var(--text-1);
 }
 .wb-detail-actions { display: flex; gap: 10px; }
@@ -693,6 +722,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .wb-detail-dots {
   position: absolute; bottom: 16px; left: 50%;
   transform: translateX(-50%);
+  font-family: var(--font-mono);
   font-size: 12px; font-weight: 500;
   background: rgba(0,0,0,0.45); color: #ffffff;
   padding: 4px 10px; border-radius: 10px;
@@ -829,6 +859,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 }
 .wb-attr-h {
   margin: 0 0 14px;
+  font-family: var(--font-display);
   font-size: 18px; font-weight: 600;
   color: var(--text-1);
 }
@@ -1014,6 +1045,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
 .wb-compare-item-score {
+  font-family: var(--font-mono);
   font-size: 10px; color: var(--text-2);
   margin-top: 2px;
 }
@@ -1039,7 +1071,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   position: fixed; inset: 0;
   background: var(--bg); color: var(--text-1);
   overflow-y: auto;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--font-body);
 }
 .wb-trip * { box-sizing: border-box; }
 
@@ -1062,7 +1094,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 .wb-trip-back:hover { background: rgba(255,255,255,0.10); }
 .wb-trip-header-text { flex: 1; min-width: 0; }
 .wb-trip-title {
-  margin: 0; font-size: 24px; font-weight: 700;
+  margin: 0; font-family: var(--font-display);
+  font-size: 24px; font-weight: 700;
   letter-spacing: -0.3px;
 }
 .wb-trip-subtitle {
@@ -1128,6 +1161,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
   box-shadow: 0 4px 14px rgba(0,0,0,0.25);
 }
 .wb-trip-card-time {
+  font-family: var(--font-mono);
   font-size: 13px; font-weight: 700;
   color: var(--accent);
   letter-spacing: 0.04em;
@@ -1139,6 +1173,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 }
 .wb-trip-card-name {
   margin: 0;
+  font-family: var(--font-display);
   font-size: 17px; font-weight: 600;
   line-height: 1.2;
   color: var(--text-1);
@@ -1188,7 +1223,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helv
 }
 .wb-trip-empty svg { color: var(--accent); }
 .wb-trip-empty p { margin: 0; line-height: 1.5; }
-.wb-trip-empty-title { font-size: 15px; font-weight: 600; color: var(--text-1); }
+.wb-trip-empty-title { font-size: 15px; font-weight: 600; color: var(--text-1); font-family: var(--font-display); }
 .wb-trip-empty-sub { font-size: 12.5px; color: var(--text-2); }
 .wb-trip-empty-cta {
   margin-top: 8px;
