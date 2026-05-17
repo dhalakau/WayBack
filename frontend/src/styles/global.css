@@ -1018,9 +1018,21 @@ body { font-family: var(--font-body); }
   color: var(--pin);
   letter-spacing: 0.04em;
 }
+/* Editorial one-liner under each column title — matches the detail page's
+   plain-voice copy register, kept Public Sans / ink-soft to sit quietly
+   beneath the pin-red title. */
+.wb-compare-col-sub {
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  color: var(--ink-soft);
+  line-height: 1.3;
+  margin-top: 4px;
+}
 .wb-compare-col-section {
   font-size: 10px; color: var(--ink-soft);
-  margin-top: 2px;
+  margin-top: 6px;
+  opacity: 0.7;
+  letter-spacing: 0.04em;
 }
 .wb-compare-col-body {
   flex: 1; display: flex; flex-direction: column; gap: 6px;

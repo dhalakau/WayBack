@@ -15,7 +15,7 @@ const USER_ID = 'user_demo'  // matches the seed user used elsewhere in this app
  * "context-aware" nature of the methods visible by varying location + hour.
  *
  * Top-3 items per method are shown so the user can compare ranking head-to-head.
- * A "How do these methods differ?" modal explains each method's algorithm
+ * A "How do these differ?" modal explains each method's algorithm
  * with explicit paper section references.
  */
 export default function MethodCompare() {
@@ -78,13 +78,14 @@ export default function MethodCompare() {
       </div>
 
       <div className="wb-compare-grid">
-        {/* Primary label is human-friendly so non-academic users can tell the
-            columns apart; the technical acronym + paper §-ref stays as a
-            secondary subtitle, and the full algorithmic detail lives in the
-            "How do these differ?" modal. */}
-        <MethodColumn label="Category match" subtitle="CBR · §5.1"   items={results.cbr}   loading={loading} />
-        <MethodColumn label="Text relevance" subtitle="JITIR · §5.2" items={results.jitir} loading={loading} />
-        <MethodColumn label="Smart context"  subtitle="CIA · §5.3"   items={results.cia}   loading={loading} />
+        {/* Editorial title + one-line sub explains the method in plain voice
+            (mirrors the detail page's "WHY YOU MIGHT WANT THIS NOW" register);
+            the paper §-ref stays as the smallest tertiary label, and the full
+            algorithmic detail (CBR/JITIR/CIA) lives in the "How do these
+            differ?" modal. */}
+        <MethodColumn label="Similar"     sub="Like-for-like from your saved kinds" section="§5.1" items={results.cbr}   loading={loading} />
+        <MethodColumn label="Relevant"    sub="Matched against what you noted"      section="§5.2" items={results.jitir} loading={loading} />
+        <MethodColumn label="Contextual"  sub="Tuned to here and now"                section="§5.3" items={results.cia}   loading={loading} />
       </div>
 
       <div className="wb-compare-note">
@@ -97,12 +98,13 @@ export default function MethodCompare() {
   )
 }
 
-function MethodColumn({ label, subtitle, items, loading }) {
+function MethodColumn({ label, sub, section, items, loading }) {
   return (
     <div className="wb-compare-col">
       <div className="wb-compare-col-head">
         <div className="wb-compare-col-name">{label}</div>
-        <div className="wb-compare-col-section">{subtitle}</div>
+        <div className="wb-compare-col-sub">{sub}</div>
+        <div className="wb-compare-col-section">{section}</div>
       </div>
       <div className="wb-compare-col-body">
         {loading && (
