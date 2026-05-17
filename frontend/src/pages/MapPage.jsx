@@ -8,7 +8,7 @@ import {
   Search, X, Plus, Compass, Bookmark, Sun, Moon, Trash2, MapPin,
   Coffee, UtensilsCrossed, Trees, Wine, Bed, ShoppingBag, Wrench,
   Train, Landmark, Camera, Navigation, Locate, MoreHorizontal,
-  Sparkles, Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
+  Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
   Footprints, Bike, Car, ArrowLeft,
   Map as MapIcon, ChevronLeft, ChevronRight,
   Ticket, StickyNote, Tags,
@@ -1462,7 +1462,7 @@ export default function MapPage() {
               role="button"
               tabIndex={0}
             >
-              <Sparkles size={18} aria-hidden="true" />
+              <Compass size={18} aria-hidden="true" />
               <div className="wb-proactive-text">
                 <div className="wb-proactive-title">{t.title}</div>
                 <div className="wb-proactive-sub">{t.sub}</div>
@@ -1823,7 +1823,7 @@ export default function MapPage() {
                       {mode === 'saved' && ` · ${item.viewCount} ${item.viewCount === 1 ? 'view' : 'views'}`}
                     </div>
                     {mode === 'map' && reasonText && (
-                      <div className="wb-item-reason"><Sparkles size={13} /> {reasonText}</div>
+                      <div className="wb-item-reason"><MapPin size={13} /> {reasonText}</div>
                     )}
                   </div>
                   {mode === 'map' ? (

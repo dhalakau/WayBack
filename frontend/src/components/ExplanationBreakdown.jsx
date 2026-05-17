@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { MapPin, Clock, Sparkles, Compass, X, BookOpen } from 'lucide-react'
+import { MapPin, Clock, Compass, X, BookOpen } from 'lucide-react'
 
 /**
  * ExplanationBreakdown — surfaces the paper's four evaluation criteria
@@ -60,7 +60,7 @@ export default function ExplanationBreakdown({ item, userLoc }) {
 function SignalRow({ signal }) {
   return (
     <div className="wb-explain-row" data-strength={signal.strength}>
-      <div className="wb-explain-icon">{signal.icon}</div>
+      {signal.icon && <div className="wb-explain-icon">{signal.icon}</div>}
       <div className="wb-explain-body">
         <div className="wb-explain-label">{signal.label}</div>
         <div className="wb-explain-detail">{signal.detail}</div>
@@ -223,7 +223,7 @@ function computeSignals(item, userLoc, now) {
       id: 'action',
       label: 'Likely your next stop',
       detail: 'Based on proximity, recency, and how often you view this',
-      icon: <Sparkles size={16} aria-hidden="true" />,
+      icon: null,
       strength: actionStrength,
     },
     {

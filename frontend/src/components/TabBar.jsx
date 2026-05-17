@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { Map as MapIcon, Bookmark, Sparkles, CirclePlus } from 'lucide-react'
+import { Map as MapIcon, Bookmark, Compass, CirclePlus } from 'lucide-react'
 
 // Shared bottom navigation — 4 tabs: Map / Saved / Plan / Add.
 //
@@ -19,7 +19,7 @@ import { Map as MapIcon, Bookmark, Sparkles, CirclePlus } from 'lucide-react'
 const TABS = [
   { key: 'map',   label: 'Map',   Icon: MapIcon },
   { key: 'saved', label: 'Saved', Icon: Bookmark },
-  { key: 'plan',  label: 'Plan',  Icon: Sparkles },
+  { key: 'plan',  label: 'Plan',  Icon: Compass },
   { key: 'add',   label: 'Add',   Icon: CirclePlus },
 ]
 

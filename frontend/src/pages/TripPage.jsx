@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ArrowLeft, Calendar, Sparkles, Footprints, MapPin,
+  ArrowLeft, Calendar, Compass, Footprints, MapPin,
   Coffee, UtensilsCrossed, Trees, Wine, Landmark, Camera,
   Bed, ShoppingBag, Train, Wrench,
 } from 'lucide-react'
@@ -186,7 +186,7 @@ export default function TripPage() {
 function LoadingState() {
   return (
     <div className="wb-trip-empty">
-      <Sparkles size={28} aria-hidden="true" />
+      <Compass size={28} aria-hidden="true" />
       <p>Planning your day…</p>
     </div>
   )
@@ -195,7 +195,7 @@ function LoadingState() {
 function EmptyState({ error, count }) {
   return (
     <div className="wb-trip-empty">
-      <Sparkles size={28} aria-hidden="true" />
+      <Compass size={28} aria-hidden="true" />
       <p className="wb-trip-empty-title">
         {error
           ? 'Could not reach the backend.'
@@ -242,7 +242,6 @@ function Itinerary({ items, userLoc }) {
       </ol>
 
       <footer className="wb-trip-footer">
-        <Sparkles size={14} aria-hidden="true" />
         <span>
           Day total: <b>{formatDistance(interStopMeters)}</b>
           {' · '}
@@ -294,7 +293,7 @@ function StopCard({ stop, isFirst, isLast }) {
         </div>
 
         <div className="wb-trip-card-reason">
-          <Sparkles size={12} aria-hidden="true" /> {slot.reason}
+          <MapPin size={12} aria-hidden="true" /> {slot.reason}
         </div>
       </Link>
     </li>
