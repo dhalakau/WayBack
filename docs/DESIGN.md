@@ -3,7 +3,7 @@
 ## Authorship
 
 **Frontend design and implementation:** Haichen Duan (Joan)
-**Backend:** teammate (Flask, Railway)
+**Backend:** Swayamsidh (Flask, Railway)
 **Project:** TUM Wirtschaftsinformatik Group W4
 **Research foundation:** Sappelli et al. 2017, "Personal Information Access for Re-finding"
 **Timeline:** Solo-built frontend, May to June 2026. M2 implementation 2026-06-01, M3 evaluation 2026-06-22, final presentation 2026-06-30.
@@ -142,7 +142,7 @@ These are project-specific bans on top of the Impeccable defaults.
 
 ## Attribution Note
 
-This document and all frontend design decisions for WayBack are by Haichen Duan. The author retains design authorship for portfolio, CV, and academic credit purposes. The frontend implementation in `src/pages/MapPage.jsx`, `src/pages/TripPage.jsx`, `src/components/MethodCompare.jsx`, `src/components/ExplanationBreakdown.jsx`, `src/components/DetailPanel.jsx`, `src/components/TabBar.jsx`, `src/components/TypeBadge.jsx`, `src/components/TicketCountdown.jsx`, and all related styling is by the author. Backend infrastructure (Flask, Railway deployment, REST endpoints, AI-generated place descriptions) is by the teammate.
+This document and all frontend design decisions for WayBack are by Haichen Duan. The author retains design authorship for portfolio, CV, and academic credit purposes. The frontend implementation in `src/pages/MapPage.jsx`, `src/pages/TripPage.jsx`, `src/components/MethodCompare.jsx`, `src/components/ExplanationBreakdown.jsx`, `src/components/DetailPanel.jsx`, `src/components/TabBar.jsx`, `src/components/TypeBadge.jsx`, `src/components/TicketCountdown.jsx`, and all related styling is by the author. Backend infrastructure (Flask, Railway deployment, REST endpoints, AI-generated place descriptions) is by Swayamsidh.
 
 ---
 

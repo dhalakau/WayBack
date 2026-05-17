@@ -4,7 +4,7 @@
 
 This document covers **frontend and UIUX work only**, owned and executed by Haichen Duan (Joan).
 
-Backend work (Flask, Railway, REST endpoints, AI-generated place descriptions) is out of scope for this plan and is owned by the teammate. Backend timeline, deployment, and infrastructure decisions are documented elsewhere.
+Backend work (Flask, Railway, REST endpoints, AI-generated place descriptions) is out of scope for this plan and is owned by Swayamsidh. Backend timeline, deployment, and infrastructure decisions are documented elsewhere.
 
 **Author:** Haichen Duan (Joan)
 **Role:** Sole frontend designer and developer, sole UIUX designer
@@ -170,12 +170,12 @@ This load is compatible with full-time student status and potential 20-hour Werk
 |---|---|---|---|
 | Color system swap breaks visual cohesion mid-week | High | A | Token rename happens in one commit. Old tokens deleted only after new tokens verified in dev. Visual regression checked on each route. |
 | Desktop layout takes longer than 12 hours | High | A | Reserved across three days including weekend. If still incomplete by Monday 5/25 night, sidebar collapses to drawer (acceptable fallback, less work). |
-| New features requested by self, teammate, or course | High | All | Strict deferral to BACKLOG.md. Communicated to teammate at start of plan. |
+| New features requested by self, Swayamsidh, or course | High | All | Strict deferral to BACKLOG.md. Communicated to Swayamsidh at start of plan. |
 | User testing recruitment fails to fill 6 to 8 slots | Medium | B | Backup plan: 4 testers minimum with deeper sessions (60 min each instead of 30 to 45). Sample size limitation documented in report as a known constraint, not a hidden flaw. |
 | Time-of-day ambient drift visually unreadable in practice | Medium | A | If drift is imperceptible to users in testing, fall back to manual dusk-mode toggle. Decision made by 2026-05-27 evening at latest. |
 | Evaluation surfaces high-severity issues requiring more than allocated iteration time | Medium | B | Phase B has 5 hours of iteration time on 6/21. If insufficient, defer P2 and P3 issues to BACKLOG.md and document the deferral in the M3 report. |
 | `/impeccable colorize` introduces WCAG contrast regressions | Medium | A | Each token pair checked against WCAG AA contrast ratio in CSS comment. Manual check on 2026-05-22. |
-| Backend deployment delays affect demo data | Out of scope | All | Owned by teammate. Frontend works against mock data if backend is unavailable. Tested with mock data once per phase. |
+| Backend deployment delays affect demo data | Out of scope | All | Owned by Swayamsidh. Frontend works against mock data if backend is unavailable. Tested with mock data once per phase. |
 
 ---
 
@@ -192,13 +192,13 @@ By 2026-06-30, the project root contains the following frontend / UIUX deliverab
 7. Written report (PDF): six sections integrating research, design, implementation, evaluation, governance, and limitations
 8. Presentation deck: 10 to 12 slides
 
-All of these are produced by the author. The teammate's backend deliverables are documented separately.
+All of these are produced by the author. Swayamsidh's backend deliverables are documented separately.
 
 ---
 
 ## Attribution Note
 
-Every task in this plan is to be implemented by Haichen Duan as sole frontend designer and sole UIUX designer for the WayBack project. Backend work is out of scope and owned by the teammate.
+Every task in this plan is to be implemented by Haichen Duan as sole frontend designer and sole UIUX designer for the WayBack project. Backend work is out of scope and owned by Swayamsidh.
 
 Git commit attribution for all frontend and UIUX work must consistently use the author's identity. Commit messages should reference the relevant phase or task in this plan when applicable, to maintain a traceable record from plan to implementation.
 
