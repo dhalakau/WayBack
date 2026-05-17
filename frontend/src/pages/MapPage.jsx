@@ -44,23 +44,6 @@ const CATEGORIES = {
   transport:     { label: 'Transport',    Icon: Train,           color: '#4285f4' },
 }
 
-// Per-category single-color washes for the detail panel hero. Each category's
-// brighter source color is blended at 18% with --paper, producing a quiet
-// cream-toned wash that still distinguishes categories without the 10-stop
-// diagonal-gradient template look (DESIGN.md anti-pattern #2).
-const CATEGORY_GRADIENTS = {
-  attraction:    'color-mix(in oklch, #4fd1c5 18%, var(--paper))',
-  restaurant:    'color-mix(in oklch, #fc8181 18%, var(--paper))',
-  cafe:          'color-mix(in oklch, #d69e2e 18%, var(--paper))',
-  museum:        'color-mix(in oklch, #b794f4 18%, var(--paper))',
-  park:          'color-mix(in oklch, #68d391 18%, var(--paper))',
-  bar:           'color-mix(in oklch, #f687b3 18%, var(--paper))',
-  accommodation: 'color-mix(in oklch, #fbb6ce 18%, var(--paper))',
-  shopping:      'color-mix(in oklch, #f6ad55 18%, var(--paper))',
-  services:      'color-mix(in oklch, #718096 18%, var(--paper))',
-  transport:     'color-mix(in oklch, #63b3ed 18%, var(--paper))',
-}
-
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
 const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
 const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', distance: 'Distance' }
@@ -790,7 +773,6 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
   if (!item) return null
 
   const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
-  const gradient = CATEGORY_GRADIENTS[item.category] || 'var(--paper-warm)'
   const CatIcon = cat.Icon
 
   function go(delta) {
@@ -847,7 +829,7 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <div className="wb-detail-hero" style={{ background: gradient }}>
+        <div className="wb-detail-hero">
           <div className="wb-detail-cat">
             <CatIcon size={14} /> {cat.label}
           </div>
