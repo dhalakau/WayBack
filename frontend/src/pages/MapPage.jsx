@@ -44,19 +44,21 @@ const CATEGORIES = {
   transport:     { label: 'Transport',    Icon: Train,           color: '#4285f4' },
 }
 
-// Per-category gradient backgrounds for the detail panel hero — gives each
-// place a distinct visual "page" feel without needing real photos.
+// Per-category single-color washes for the detail panel hero. Each category's
+// brighter source color is blended at 18% with --paper, producing a quiet
+// cream-toned wash that still distinguishes categories without the 10-stop
+// diagonal-gradient template look (DESIGN.md anti-pattern #2).
 const CATEGORY_GRADIENTS = {
-  attraction:    'linear-gradient(135deg, #2c7a7b 0%, #4fd1c5 100%)',
-  restaurant:    'linear-gradient(135deg, #c53030 0%, #fc8181 100%)',
-  cafe:          'linear-gradient(135deg, #7b341e 0%, #d69e2e 100%)',
-  museum:        'linear-gradient(135deg, #553c9a 0%, #b794f4 100%)',
-  park:          'linear-gradient(135deg, #276749 0%, #68d391 100%)',
-  bar:           'linear-gradient(135deg, #97266d 0%, #f687b3 100%)',
-  accommodation: 'linear-gradient(135deg, #b83280 0%, #fbb6ce 100%)',
-  shopping:      'linear-gradient(135deg, #c05621 0%, #f6ad55 100%)',
-  services:      'linear-gradient(135deg, #2d3748 0%, #718096 100%)',
-  transport:     'linear-gradient(135deg, #2c5282 0%, #63b3ed 100%)',
+  attraction:    'color-mix(in oklch, #4fd1c5 18%, var(--paper))',
+  restaurant:    'color-mix(in oklch, #fc8181 18%, var(--paper))',
+  cafe:          'color-mix(in oklch, #d69e2e 18%, var(--paper))',
+  museum:        'color-mix(in oklch, #b794f4 18%, var(--paper))',
+  park:          'color-mix(in oklch, #68d391 18%, var(--paper))',
+  bar:           'color-mix(in oklch, #f687b3 18%, var(--paper))',
+  accommodation: 'color-mix(in oklch, #fbb6ce 18%, var(--paper))',
+  shopping:      'color-mix(in oklch, #f6ad55 18%, var(--paper))',
+  services:      'color-mix(in oklch, #718096 18%, var(--paper))',
+  transport:     'color-mix(in oklch, #63b3ed 18%, var(--paper))',
 }
 
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
@@ -787,7 +789,7 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
   if (!item) return null
 
   const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
-  const gradient = CATEGORY_GRADIENTS[item.category] || 'linear-gradient(135deg, #1c2530, #28323f)'
+  const gradient = CATEGORY_GRADIENTS[item.category] || 'var(--paper-warm)'
   const CatIcon = cat.Icon
 
   function go(delta) {
