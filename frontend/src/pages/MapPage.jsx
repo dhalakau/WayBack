@@ -41,12 +41,12 @@ const CATEGORIES = {
   restaurant:    { label: 'Restaurants',  Icon: UtensilsCrossed, color: '#f8afa8' },  // src #f28b82
   cafe:          { label: 'Cafés',        Icon: Coffee,          color: '#e3bd9c' },  // src #d4a276
   museum:        { label: 'Museums',      Icon: Landmark,        color: '#c1b2fb' },  // src #a78bfa
-  park:          { label: 'Parks',        Icon: Trees,           color: '#88bf9d' },  // src #4a9c6e
+  park:          { label: 'Parks',        Icon: Trees,           color: '#2f7a4f' },  // src #4a9c6e; hand-picked deeper anchor (4.05:1 on --paper-warm)
   bar:           { label: 'Bars',         Icon: Wine,            color: '#f690ba' },  // src #ec4899
   accommodation: { label: 'Hotels',       Icon: Bed,             color: '#e9a5b5' },  // src #d97a93
   shopping:      { label: 'Shopping',     Icon: ShoppingBag,     color: '#f6ce7c' },  // src #fbbc04
   services:      { label: 'Services',     Icon: Wrench,          color: '#8b9d96' },  // src #5a6166
-  transport:     { label: 'Transport',    Icon: Train,           color: '#85b1fa' },  // src #4285f4
+  transport:     { label: 'Transport',    Icon: Train,           color: '#5e94d6' },  // src #4285f4; hand-picked deeper variant (2.44:1; floor overridden, see commit message)
 }
 
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
