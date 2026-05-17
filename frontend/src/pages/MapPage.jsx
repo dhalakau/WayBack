@@ -1379,8 +1379,8 @@ export default function MapPage() {
   // ---- render ----------------------------------------------------------------
   const list = listToShow()
   const sheetTitle = mode === 'saved' ? `Saved (${savedItems.length})` : 'Your places'
-  // Map tiles match the cream chrome (DESIGN.md 2026-05-17 pivot: full-cream
-  // Editorial Paper, dark-map split deprecated).
+  // Map tiles match the cream chrome (docs/DESIGN.md 2026-05-17 pivot:
+  // full-cream Editorial Paper, dark-map split deprecated).
   const tileUrl = TILES.light
 
   return (
