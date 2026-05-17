@@ -56,6 +56,17 @@ body { font-family: var(--font-body); }
   --bg: #1a2433; --surface-1: #28323f; --surface-2: #1c2530; --surface-3: #14202d;
   --text-1: #e8eaed; --text-2: #9aa0a6; --border: rgba(255,255,255,0.08); --handle: #5f6368;
   --accent: #a0e6d4; --accent-on: #0e3a31; --accent-bg: rgba(160,230,212,0.18); --status: #e8eaed;
+  /* Editorial Paper palette - Phase A Stage 1 (2026-05-21): tokens defined, not yet applied to selectors */
+  --paper:      #f3ede1;  /* 13.40:1 on --map-bg (cream-on-dark AA body PASS) */
+  --paper-soft: #e8e0cf;
+  --paper-warm: #efe1c8;
+  --ink:        #1a1815;  /* 15.19:1 on --paper (AA + AAA body text PASS) */
+  --ink-soft:   #4a463f;  /*  8.04:1 on --paper (AA + AAA body text PASS) */
+  --rule:       #c8bca8;
+  --pin:        #c44536;  /*  4.24:1 on --paper (AA non-text PASS at 3:1; below 4.5:1 so not for body text) */
+  --pin-soft:   #e8a5a5;
+  --map-bg:     #1a2433;
+  --accent-fallback: var(--accent);
   position: fixed; inset: 0; background: var(--bg); color: var(--text-1); user-select: none;
   transition: background 0.25s, color 0.25s;
 }
