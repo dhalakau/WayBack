@@ -1259,5 +1259,5 @@ body { font-family: var(--font-body); }
   padding: 3px 14px; border-radius: 12px;
   transition: background 0.18s; display: flex;
 }
-.wb-nav-item.active { color: var(--accent, #a0e6d4); }
+.wb-nav-item.active { color: var(--pin, #c44536); }
 .wb-nav-item.active .nav-icon { background: var(--accent-bg, rgba(196,69,54,0.18)); }
