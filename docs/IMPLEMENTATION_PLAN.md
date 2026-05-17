@@ -8,7 +8,7 @@ Backend work (Flask, Railway, REST endpoints, AI-generated place descriptions) i
 
 **Author:** Haichen Duan (Joan)
 **Role:** Sole frontend designer and developer, sole UIUX designer
-**Project:** TUM Wirtschaftsinformatik Group W4
+**Project:** TUM School of CIT, Informatik · Projects in Recommender Systems · Group W4
 
 **Three TUM deadlines:**
 

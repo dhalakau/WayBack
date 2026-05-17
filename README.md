@@ -4,7 +4,7 @@
 
 Context-aware re-finding system for personal tourism information.
 
-TUM Lab Course SS 2026 · Project \[W4]
+TUM School of CIT · Projects in Recommender Systems · SS 2026 · Project \[W4]
 
 
 

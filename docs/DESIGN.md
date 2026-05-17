@@ -4,7 +4,7 @@
 
 **Frontend design and implementation:** Haichen Duan (Joan)
 **Backend:** Swayamsidh (Flask, Railway)
-**Project:** TUM Wirtschaftsinformatik Group W4
+**Project:** TUM School of CIT, Informatik · Projects in Recommender Systems · Group W4
 **Research foundation:** Sappelli et al. 2017, "Personal Information Access for Re-finding"
 **Timeline:** Solo-built frontend, May to June 2026. M2 implementation 2026-06-01, M3 evaluation 2026-06-22, final presentation 2026-06-30.
 
@@ -96,7 +96,7 @@ This is the one memorable motion moment. The rest of the system stays restrained
 - **Mobile (under 900px):** single column, current 440px max-width, bottom sheet pattern retained
 - **Desktop (900px and above):** split layout. Map fills the viewport. A 360 to 400px sidebar on the right contains saved places, search, and method tabs. Bottom sheet collapses. FABs become inline sidebar buttons.
 
-A frontend never tested on desktop is a deal-breaker for a TUM lab demo opened on a laptop. This is non-negotiable.
+A frontend never tested on desktop is a deal-breaker for a course demo opened on a laptop. This is non-negotiable.
 
 **List rhythm:** Saved-places list uses asymmetric two-column rhythm (large card and small card alternation) instead of uniform 56px rows. Visual variety carries meaning. Most-revisited places get the larger card.
 
