@@ -50,7 +50,7 @@
      brand colors; the legacy --bg / --surface / --text / --accent values
      under .wb-app are kept defined for the duration of Stage 2 but are
      being phased out as callsites migrate. */
-  --paper:      #f3ede1;  /* 13.40:1 on --map-bg */
+  --paper:      #f3ede1;
   --paper-soft: #e8e0cf;
   --paper-warm: #efe1c8;
   --ink:        #1a1815;  /* 15.19:1 on --paper (AA + AAA body) */
@@ -58,7 +58,7 @@
   --rule:       #c8bca8;
   --pin:        #c44536;  /*  4.24:1 on --paper (AA non-text at 3:1) */
   --pin-soft:   #e8a5a5;
-  --map-bg:     #1a2433;
+  --map-bg:     #ece4d2;  /* Positron tile background; sits just below --paper in the cream family */
   --accent-fallback: #a0e6d4;  /* legacy mint, retained only for live-data badges */
 }
 

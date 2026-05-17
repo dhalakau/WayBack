@@ -65,11 +65,12 @@ const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
 const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
 const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', distance: 'Distance' }
 
+// Editorial Paper: cream chrome AND cream map. Positron is the only tile
+// set in the system after 2026-05-17 pivot away from dark-map split.
 const TILES = {
-  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
 }
-const TILE_ATTRIB = '&copy; OpenStreetMap &copy; CARTO'
+const TILE_ATTRIB = '&copy; OpenStreetMap &copy; CARTO Positron'
 
 // -----------------------------------------------------------------------------
 // Leaflet marker helpers
@@ -1391,8 +1392,9 @@ export default function MapPage() {
   // ---- render ----------------------------------------------------------------
   const list = listToShow()
   const sheetTitle = mode === 'saved' ? `Saved (${savedItems.length})` : 'Your places'
-  // Map tiles are always dark (DESIGN.md: the map is the only dark surface).
-  const tileUrl = TILES.dark
+  // Map tiles match the cream chrome (DESIGN.md 2026-05-17 pivot: full-cream
+  // Editorial Paper, dark-map split deprecated).
+  const tileUrl = TILES.light
 
   return (
     <>
