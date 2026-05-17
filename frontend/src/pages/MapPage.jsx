@@ -36,11 +36,11 @@ const CATEGORIES = {
   restaurant:    { label: 'Restaurants',  Icon: UtensilsCrossed, color: '#f28b82' },
   cafe:          { label: 'Cafés',        Icon: Coffee,          color: '#d4a276' },
   museum:        { label: 'Museums',      Icon: Landmark,        color: '#a78bfa' },
-  park:          { label: 'Parks',        Icon: Trees,           color: '#81c995' },
+  park:          { label: 'Parks',        Icon: Trees,           color: '#4a9c6e' },
   bar:           { label: 'Bars',         Icon: Wine,            color: '#ec4899' },
-  accommodation: { label: 'Hotels',       Icon: Bed,             color: '#f4c0d1' },
+  accommodation: { label: 'Hotels',       Icon: Bed,             color: '#d97a93' },
   shopping:      { label: 'Shopping',     Icon: ShoppingBag,     color: '#fbbc04' },
-  services:      { label: 'Services',     Icon: Wrench,          color: '#9aa0a6' },
+  services:      { label: 'Services',     Icon: Wrench,          color: '#5a6166' },
   transport:     { label: 'Transport',    Icon: Train,           color: '#4285f4' },
 }
 
