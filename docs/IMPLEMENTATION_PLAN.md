@@ -14,7 +14,7 @@ Backend work (Flask, Railway, REST endpoints, AI-generated place descriptions) i
 
 - **Milestone 2 (Implementation):** 2026-06-01
 - **Milestone 3 (Evaluation and Tests):** 2026-06-22
-- **Final Presentation and Written Report:** 2026-06-30
+- **Final Presentation and Written Report:** 2026-07-06
 
 **Plan written:** 2026-05-17
 
@@ -24,13 +24,13 @@ This plan derives directly from `DESIGN.md` (the source of truth for visual and 
 
 ## Three-Phase Strategy
 
-The 44-day window from plan start to final presentation breaks cleanly into three sprints, each ending on a TUM milestone:
+The 50-day window from plan start to final presentation breaks cleanly into three sprints, each ending on a TUM milestone:
 
 | Phase | Window | Target Milestone | Frontend / UIUX Focus |
 |---|---|---|---|
 | **A: Implementation Sprint** | 2026-05-17 to 2026-05-31 (15 days) | M2 on 6/1 | Build the Editorial Paper visual system end-to-end. Desktop layout. Signature motion. Accessibility baseline. |
 | **B: Evaluation Sprint** | 2026-06-02 to 2026-06-21 (20 days) | M3 on 6/22 | User testing on real testers. Heuristic evaluation. Automated tests (a11y, visual regression, design CI). Iterate on findings. |
-| **C: Synthesis Sprint** | 2026-06-23 to 2026-06-29 (7 days) | Final on 6/30 | Written report. Presentation deck. Rehearsal. Final polish based on evaluation findings. |
+| **C: Synthesis Sprint** | 2026-06-23 to 2026-07-05 (13 days) | Final on 7/6 | Written report. Presentation deck. Rehearsal. Final polish based on evaluation findings. |
 
 **Sequencing principle:** Visual transformation first (you cannot evaluate what is not yet built). Evaluation only on the finished surface. Synthesis last, using the evaluation evidence as the centerpiece of the final report narrative.
 
@@ -128,26 +128,26 @@ Shipped opportunistically once Week 1 cleared early. Captured here so the plan r
 
 ---
 
-## Phase C: Synthesis Sprint (2026-06-23 to 2026-06-29)
+## Phase C: Synthesis Sprint (2026-06-23 to 2026-07-05)
 
-**Target deliverable for 6/30:** A written report integrating research foundation, design rationale, implementation walkthrough, evaluation findings, and a polished live presentation.
+**Target deliverable for 7/6:** A written report integrating research foundation, design rationale, implementation walkthrough, evaluation findings, and a polished live presentation.
 
 | Date | Task | Domain | Estimated hours |
 |---|---|---|---|
-| 2026-06-23 to 2026-06-24 | Written report sections one and two: Research motivation (Sappelli et al. 2017 framing) and Design philosophy (DESIGN.md content adapted into prose). Reference the Editorial Paper rationale in academic register. | Writing | 6 |
-| 2026-06-24 to 2026-06-25 | Written report sections three and four: Implementation walkthrough (component map, key interactions, signature motion) and Design system as artifact (DESIGN.md, IMPLEMENTATION_PLAN.md, CI design-check script as governance contribution). | Writing | 6 |
-| 2026-06-26 | Written report section five: Evaluation methodology and findings. Quantitative breakdown of testing sessions, qualitative theme summary, severity-tagged issues, iterations applied. This is the longest section and the strongest one. | Writing | 5 |
-| 2026-06-26 | Written report section six: Limitations and future work. Acknowledge the solo testing sample size, the lack of A/B comparison across aesthetic directions, the deferred Percy or Chromatic integration, and any backend constraints affecting frontend capability. | Writing | 2 |
-| 2026-06-27 | Presentation deck: 10 to 12 slides. Core narrative: solo frontend and UIUX, design system governance, evaluation-driven iteration, six-week arc. Use before/after screenshots from M2 and visual regression baseline as supporting evidence. | UIUX (presentation design) | 4 |
-| 2026-06-28 | Rehearse presentation three times. Time it. Prepare answers for likely Q&A: Why Editorial Paper over the mint baseline? How did you handle the 440px to desktop transition? What would you change with another two weeks? How does the CI script prevent regression? | Presentation prep | 3 |
-| 2026-06-29 | Final polish on any visual or copy issue surfaced during rehearsal. Final commit. Tag `v1.0-final`. | Frontend + UIUX | 2 |
-| **2026-06-30** | **Final Presentation and Written Report submission** | n/a | n/a |
+| 2026-06-23 to 2026-06-26 | Written report sections one and two: Research motivation (Sappelli et al. 2017 framing) and Design philosophy (DESIGN.md content adapted into prose). Reference the Editorial Paper rationale in academic register. | Writing | 6 |
+| 2026-06-27 to 2026-06-29 | Written report sections three and four: Implementation walkthrough (component map, key interactions, signature motion) and Design system as artifact (DESIGN.md, IMPLEMENTATION_PLAN.md, CI design-check script as governance contribution). | Writing | 6 |
+| 2026-06-30 to 2026-07-01 | Written report section five: Evaluation methodology and findings. Quantitative breakdown of testing sessions, qualitative theme summary, severity-tagged issues, iterations applied. This is the longest section and the strongest one. | Writing | 5 |
+| 2026-07-02 | Written report section six: Limitations and future work. Acknowledge the solo testing sample size, the lack of A/B comparison across aesthetic directions, the deferred Percy or Chromatic integration, and any backend constraints affecting frontend capability. | Writing | 2 |
+| 2026-07-03 | Presentation deck: 10 to 12 slides. Core narrative: solo frontend and UIUX, design system governance, evaluation-driven iteration, six-week arc. Use before/after screenshots from M2 and visual regression baseline as supporting evidence. | UIUX (presentation design) | 4 |
+| 2026-07-04 | Rehearse presentation three times. Time it. Prepare answers for likely Q&A: Why Editorial Paper over the mint baseline? How did you handle the 440px to desktop transition? What would you change with another two weeks? How does the CI script prevent regression? | Presentation prep | 3 |
+| 2026-07-05 | Final polish on any visual or copy issue surfaced during rehearsal. Final commit. Tag `v1.0-final`. | Frontend + UIUX | 2 |
+| **2026-07-06** | **Final Presentation and Written Report submission** | n/a | n/a |
 
 ### Phase C Estimated Effort
 
 - Total hours: approximately 28
-- Working days: 7
-- Average daily load: 4 hours (writing-heavy)
+- Working days: 13
+- Average daily load: ~2.2 hours (writing-heavy, but spread)
 
 ---
 
@@ -157,8 +157,8 @@ Shipped opportunistically once Week 1 cleared early. Captured here so the plan r
 |---|---|---|---|
 | A (Implementation) | 56 | 15 | 3.7 |
 | B (Evaluation) | 50 | 20 | 2.5 |
-| C (Synthesis) | 28 | 7 | 4.0 |
-| **Total** | **134** | **42** | **3.2** |
+| C (Synthesis) | 28 | 13 | 2.2 |
+| **Total** | **134** | **48** | **2.8** |
 
 This load is compatible with full-time student status and potential 20-hour Werkstudent work in parallel.
 
@@ -181,7 +181,7 @@ This load is compatible with full-time student status and potential 20-hour Werk
 
 ## Documents Produced by the End of the Project
 
-By 2026-06-30, the project root contains the following frontend / UIUX deliverables, all authored by Haichen Duan:
+By 2026-07-06, the project root contains the following frontend / UIUX deliverables, all authored by Haichen Duan:
 
 1. `DESIGN.md`: source of truth for visual and interaction decisions, with Decision Log entries from 5/17 through final evaluation findings
 2. `IMPLEMENTATION_PLAN.md`: this document, ending with a retrospective annotation of completed phases
@@ -210,5 +210,5 @@ The Decision Log in DESIGN.md and this implementation plan together form the des
 
 ---
 
-Last updated: 2026-05-17 (sprint progress recorded; original entry: revised to reflect actual TUM milestones: M2 on 6/1, M3 on 6/22, Final on 6/30)
+Last updated: 2026-05-17 (sprint progress recorded; original entry: revised to reflect actual TUM milestones: M2 on 6/1, M3 on 6/22, Final on 7/6)
 Author: Haichen Duan (Joan)

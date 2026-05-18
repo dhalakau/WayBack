@@ -6,7 +6,7 @@
 **Backend:** Swayamsidh (Flask, Railway)
 **Project:** TUM School of CIT, Informatik · Projects in Recommender Systems · Group W4
 **Research foundation:** Sappelli et al. 2017, "Personal Information Access for Re-finding"
-**Timeline:** Solo-built frontend, May to June 2026. M2 implementation 2026-06-01, M3 evaluation 2026-06-22, final presentation 2026-06-30.
+**Timeline:** Solo-built frontend, May to June 2026. M2 implementation 2026-06-01, M3 evaluation 2026-06-22, final presentation 2026-07-06.
 
 All frontend design decisions documented below are by the author. The visual system, type stack, motion language, spatial logic, and component compositions were chosen, justified, and implemented by the author. This document is the source of truth for any subsequent design changes. Reviewers should consult it before attributing design decisions.
 
