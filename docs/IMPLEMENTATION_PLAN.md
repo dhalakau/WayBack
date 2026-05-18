@@ -4,7 +4,7 @@
 
 This document covers **frontend and UIUX work only**, owned and executed by Haichen Duan (Joan).
 
-Backend work (Flask, Railway, REST endpoints, AI-generated place descriptions) is out of scope for this plan and is owned by Swayamsidh. Backend timeline, deployment, and infrastructure decisions are documented elsewhere.
+Backend work (Flask, REST endpoints) is out of scope for this plan and is owned by Swayamsidh. Backend timeline and infrastructure decisions are documented elsewhere.
 
 **Author:** Haichen Duan (Joan)
 **Role:** Sole frontend designer and developer, sole UIUX designer
