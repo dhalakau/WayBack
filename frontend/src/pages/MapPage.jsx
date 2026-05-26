@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 'react-leaflet'
@@ -20,6 +21,7 @@ import MethodCompare from '../components/MethodCompare'
 import TypeBadge from '../components/TypeBadge'
 import TicketCountdown from '../components/TicketCountdown'
 import TabBar from '../components/TabBar'
+import ThemeToggle from '../components/ThemeToggle'
 
 // -----------------------------------------------------------------------------
 // Constants
@@ -50,27 +52,38 @@ const CATEGORIES = {
 }
 
 const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
+// Overflow categories surfaced behind the "More" chip. Order picked so the
+// most-tapped categories from the seed dataset sit on top.
+const MORE_PILLS = ['bar', 'accommodation', 'shopping', 'services', 'transport']
 const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
 const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', distance: 'Distance' }
 
-// Editorial Paper: cream chrome AND cream map. Positron is the only tile
-// set in the system after 2026-05-17 pivot away from dark-map split.
+// Editorial Paper: cream chrome AND cream map for light mode (CARTO Positron).
+// Dark mode pairs the warm cocoa chrome with CARTO Dark Matter so the map
+// itself reads as dark instead of an awkward light tile inside dark chrome.
+// FIX 3 (2026-05-26): re-introducing the dark tile set after the 2026-05-17
+// single-set pivot, now that the toggle is back.
 const TILES = {
   light: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+  dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
 }
-const TILE_ATTRIB = '&copy; OpenStreetMap &copy; CARTO Positron'
+const TILE_ATTRIB = '&copy; OpenStreetMap &copy; CARTO'
 
 // -----------------------------------------------------------------------------
 // Leaflet marker helpers
 // -----------------------------------------------------------------------------
 
-// Google-Maps-style "map type" icon: two stacked rhombi.
+// Bug 6: WayBack ranking-method icon. Three dots arranged in a triangle
+// inside a circle, one dot per method (For this moment / Near me / From
+// history). Distinct from the previous Google-Maps-style stacked rhombi.
 function LayersIcon({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round">
-      <path d="M12 3 L21.5 9 L12 15 L2.5 9 Z" />
-      <path d="M2.5 14 L12 20 L21.5 14" />
+      stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round">
+      <circle cx="12" cy="12" r="9.25" />
+      <circle cx="12" cy="7.6" r="1.55" fill="currentColor" stroke="none" />
+      <circle cx="7.8" cy="14.6" r="1.55" fill="currentColor" stroke="none" />
+      <circle cx="16.2" cy="14.6" r="1.55" fill="currentColor" stroke="none" />
     </svg>
   )
 }
@@ -770,7 +783,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
 // Swipe left/right (or use the chevrons) to flip between saved places.
 // -----------------------------------------------------------------------------
 
-function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, userLoc }) {
+function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc }) {
   const idx = items.findIndex(i => i.id === itemId)
   const item = items[idx]
   const [tx, setTx] = useState(0)
@@ -835,6 +848,13 @@ function DetailPanel({ itemId, items, onClose, onNavigate, onDelete, onSwitch, u
         onPointerCancel={onPointerUp}
       >
         <div className="wb-detail-hero">
+          {/* Bug 8: small breadcrumb showing which slice the arrows walk
+              through, so the user can tell "I came from For this moment". */}
+          {contextLabel && (
+            <div className="wb-detail-crumb" aria-label="Navigation context">
+              From: {contextLabel}
+            </div>
+          )}
           <div className="wb-detail-cat">
             <CatIcon size={14} /> {cat.label}
           </div>
@@ -927,6 +947,16 @@ export default function MapPage() {
   // Open/close state for the sort dropdown in the Saved sheet header.
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortDropdownRef = useRef(null)
+  // Open/close state for the "More" category overflow dropdown next to the
+  // pill row (Bug 2 — Bars, Hotels, Shopping, Services, Transport).
+  // FIX 4: the menu is rendered through a portal so it isn't clipped by
+  // the .wb-pills horizontal-scroll container's overflow. moreTriggerRect
+  // captures the trigger's bounding rect at open time for anchoring.
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreDropdownRef = useRef(null)
+  const moreTriggerRef = useRef(null)
+  const moreMenuRef = useRef(null)
+  const [moreTriggerRect, setMoreTriggerRect] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
   // Paper §3 — second-tier filter by saved-item type (bookmark/ticket/map_pin/note).
@@ -941,6 +971,11 @@ export default function MapPage() {
 
   // NEW: phase-3 state
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
+  // Bug 8: which slice of items the detail panel's left/right arrows walk
+  // through. Set at openDetail call time from whichever list the user tapped
+  // in (e.g. "For this moment", "Saved"). null falls back to all saved items
+  // (deep-link / marker tap behavior).
+  const [detailContext, setDetailContext] = useState(null) // { ids: string[], label: string } | null
   const [dismissed, setDismissed] = useState(new Set())    // hide from Map view (not Saved)
   const [navTarget, setNavTarget] = useState(null)         // active route destination
   const [routesByMode, setRoutesByMode] = useState({})     // { foot, bike, car, transit } each → route|null
@@ -951,6 +986,22 @@ export default function MapPage() {
   // Both feed into the contextBoost() multiplier that re-ranks recs.
   const [weather, setWeather] = useState(null)             // { tempC, code, isDay, condition, label } | null
   const [currentTime, setCurrentTime] = useState(new Date())
+
+  // FIX 3: track the current theme so we can swap the Leaflet TileLayer
+  // between Positron (light) and Dark Matter (dark). The attribute is set
+  // by ThemeToggle / main.jsx; we observe data-theme on <html> so the map
+  // re-renders without prop drilling.
+  const [theme, setTheme] = useState(
+    () => document.documentElement.getAttribute('data-theme') || 'light'
+  )
+  useEffect(() => {
+    const html = document.documentElement
+    const observer = new MutationObserver(() => {
+      setTheme(html.getAttribute('data-theme') || 'light')
+    })
+    observer.observe(html, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
 
   // Compare-methods view in the Saved tab (W4 demo feature; paper §5)
   const [compareMode, setCompareMode] = useState(false)
@@ -970,7 +1021,14 @@ export default function MapPage() {
   // ---- sheet drag ------------------------------------------------------------
   const sheetRef = useRef(null)
   const fabsRef = useRef(null)
+  // FIX 2: theme toggle lives at bottom-left now and needs to track the sheet
+  // the same way the right-side FAB cluster does.
+  const themeRef = useRef(null)
   const dragRef = useRef({ startY: 0, startOffset: 200, dragging: false, snap: 200 })
+  // Mirror of dragRef.snap into React state — needed because the bottom-sheet
+  // body has to disappear at the floor (Bug 3), and dragRef alone cannot
+  // trigger re-renders. Updated in applyOffset() below.
+  const [snapPx, setSnapPx] = useState(200)
 
   // When arriving from another route (e.g. TripPage tapping the Saved or Add
   // tab), honor `?mode=` so the tab the user pressed actually opens.
@@ -1045,6 +1103,42 @@ export default function MapPage() {
       document.removeEventListener('keydown', onKey)
     }
   }, [sortMenuOpen])
+
+  // "More" category dropdown — close on outside click / Escape.
+  // FIX 4: the menu is portaled to <body>, so we have to whitelist BOTH the
+  // wrap (which holds the trigger) AND the portaled menu node when deciding
+  // whether a click counts as "outside".
+  useEffect(() => {
+    if (!moreOpen) return
+    function onDocClick(e) {
+      const inWrap = moreDropdownRef.current?.contains(e.target)
+      const inMenu = moreMenuRef.current?.contains(e.target)
+      if (!inWrap && !inMenu) setMoreOpen(false)
+    }
+    function onKey(e) { if (e.key === 'Escape') setMoreOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [moreOpen])
+
+  // FIX 4: capture the trigger's bounding rect when the menu opens so the
+  // portaled menu can anchor itself. Reposition on resize so the menu stays
+  // glued to the trigger if the viewport shifts.
+  useEffect(() => {
+    if (!moreOpen) return
+    const measure = () => {
+      const el = moreTriggerRef.current
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      setMoreTriggerRect({ left: r.left, right: r.right, top: r.top, bottom: r.bottom })
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [moreOpen])
 
   // When a destination is selected, fetch routes for ALL four modes in
   // parallel so the mode-selector tabs can show comparative times upfront.
@@ -1175,9 +1269,10 @@ export default function MapPage() {
   // making the pill row a real filter (not just a visual) so it cuts both
   // the bottom-sheet list AND the map markers down to the picked category.
   function pickPill(key) {
-    if (key === 'more') { showToast('All categories below. Drag the sheet up.'); return }
+    if (key === 'more') { setMoreOpen(o => !o); return }
     // Tapping the same active pill toggles back to "all".
     setFilter(prev => (prev === key && key !== 'all') ? 'all' : key)
+    setMoreOpen(false)
   }
 
   // ---- save / delete --------------------------------------------------------
@@ -1233,9 +1328,41 @@ export default function MapPage() {
   // ---- detail panel (the "flipbook" view) ------------------------------------
   // Tapping a place opens this; it also fires GET /saved-items/:id which the
   // backend uses to increment viewCount + lastViewedAt (feeds the CIA model).
-  async function openDetail(itemId) {
+  //
+  // Bug 7: the GET was returning a stale value on quick re-opens because the
+  // saved-items list in state wasn't being refreshed. We now optimistically
+  // bump the local viewCount AND fire a dedicated POST /items/:id/view in
+  // parallel so the next backend GET reflects the new count immediately.
+  //
+  // Bug 8: openDetail accepts an optional context describing which slice of
+  // items the arrow navigation should walk through (e.g. "For this moment").
+  // Calls from onSwitch (already inside the panel) omit ctx to preserve the
+  // existing context.
+  async function openDetail(itemId, ctx) {
     setDetailItemId(itemId)
-    try { await fetch(`${API}/saved-items/${itemId}`) } catch {}
+    if (ctx !== undefined) setDetailContext(ctx)
+
+    // Optimistic local bump so the detail panel reflects the new view count
+    // on first paint, regardless of whether the backend write lands.
+    setSavedItems(prev => prev.map(it => (
+      it.id === itemId
+        ? { ...it, viewCount: (it.viewCount || 0) + 1, lastViewedAt: Date.now() }
+        : it
+    )))
+
+    // TODO: backend needs POST /items/:id/view endpoint — coordinate with Sway.
+    // Fire-and-forget; we don't await it so render isn't blocked.
+    try { fetch(`${API}/items/${itemId}/view`, { method: 'POST' }) } catch { /* fire-and-forget */ }
+
+    // The existing GET is what the current backend uses to increment the
+    // counter. Cache-bust query + no-store so the next read of this item
+    // reflects the increment instead of a cached value.
+    try {
+      await fetch(`${API}/saved-items/${itemId}?_=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      })
+    } catch { /* network failure is non-fatal; optimistic bump already shown */ }
   }
 
   // ---- swipe-to-dismiss on recommendations -----------------------------------
@@ -1343,7 +1470,10 @@ export default function MapPage() {
     sheet.style.transform = `translateY(${ty}px)`
     const fabBottom = `${Math.max(76, offsetFromBottom + 76)}px`
     if (fabsRef.current)     fabsRef.current.style.bottom = fabBottom
+    // FIX 2: keep the bottom-left theme toggle aligned with the bottom FAB.
+    if (themeRef.current)    themeRef.current.style.bottom = fabBottom
     dragRef.current.snap = offsetFromBottom
+    setSnapPx(offsetFromBottom)
   }
 
   // Initial position is handled entirely by CSS — the sheet's
@@ -1379,9 +1509,10 @@ export default function MapPage() {
   // ---- render ----------------------------------------------------------------
   const list = listToShow()
   const sheetTitle = mode === 'saved' ? `Saved (${savedItems.length})` : 'Your places'
-  // Map tiles match the cream chrome (docs/DESIGN.md 2026-05-17 pivot:
-  // full-cream Editorial Paper, dark-map split deprecated).
-  const tileUrl = TILES.light
+  // FIX 3: tile set follows the theme. Positron for light, Dark Matter for
+  // dark; the TileLayer is keyed on `theme` below so Leaflet remounts and
+  // fetches the new set when the toggle flips.
+  const tileUrl = TILES[theme] || TILES.light
 
   return (
     <>
@@ -1396,7 +1527,7 @@ export default function MapPage() {
             attributionControl={false}
             style={{ height: '100%', width: '100%', background: 'var(--map-bg)' }}
           >
-            <TileLayer url={tileUrl} attribution={TILE_ATTRIB} />
+            <TileLayer key={theme} url={tileUrl} attribution={TILE_ATTRIB} />
             <ClickToMovePin active={mode === 'add'} onPick={ll => setNewPin(ll)} />
             <CenterOnUser trigger={centerTrigger} center={userLoc} />
             <SearchFocus query={search} items={savedItems} />
@@ -1437,39 +1568,13 @@ export default function MapPage() {
           </MapContainer>
         </div>
 
-        {/* ---- top overlay stack: banner + search/pills share one flex column
-                so the banner pushes the search bar down instead of z-stacking
-                on top of it. Weather / method-tag / layers stay on their own
-                absolute positions outside this stack. */}
+        {/* FIX 5: the proactive banner used to live floating above the map.
+            It now renders INSIDE the bottom sheet directly below the method
+            picker (see below) so it reads as an extension of the picker
+            block, not a floating overlay. */}
+
+        {/* ---- top overlay stack: search + pills only. */}
         <div className="wb-top-overlay-stack">
-        {proactiveAlert && mode === 'map' && (() => {
-          const t = proactiveBannerText(
-            proactiveAlert.item,
-            proactiveAlert.reason,
-            proactiveAlert.signals,
-          )
-          return (
-            <div
-              className="wb-proactive"
-              onClick={() => openDetail(proactiveAlert.item.id)}
-              role="button"
-              tabIndex={0}
-            >
-              <Compass size={18} aria-hidden="true" />
-              <div className="wb-proactive-text">
-                <div className="wb-proactive-title">{t.title}</div>
-                <div className="wb-proactive-sub">{t.sub}</div>
-              </div>
-              <button
-                className="wb-proactive-x"
-                onClick={(e) => { e.stopPropagation(); dismissProactiveAlert() }}
-                aria-label="Dismiss"
-              >
-                <X size={16} />
-              </button>
-            </div>
-          )
-        })()}
 
         {/* ---- search + pills (hidden in saved/add modes) ------------------ */}
         <div className="wb-search-area">
@@ -1497,9 +1602,25 @@ export default function MapPage() {
                 </button>
               )
             })}
-            <button className="wb-pill" onClick={() => pickPill('more')}>
-              <MoreHorizontal size={14} /> More
-            </button>
+            <div className="wb-more-wrap" ref={moreDropdownRef}>
+              {(() => {
+                const activeOverflow = MORE_PILLS.includes(filter) ? filter : null
+                const ActiveIcon = activeOverflow ? CATEGORIES[activeOverflow].Icon : MoreHorizontal
+                return (
+                  <button
+                    type="button"
+                    ref={moreTriggerRef}
+                    className={`wb-pill ${activeOverflow ? 'active' : ''}`}
+                    aria-haspopup="listbox"
+                    aria-expanded={moreOpen}
+                    onClick={() => pickPill('more')}
+                  >
+                    <ActiveIcon size={14} />
+                    {activeOverflow ? CATEGORIES[activeOverflow].label : 'More'}
+                  </button>
+                )
+              })()}
+            </div>
           </div>
           {/* Paper §3: filtering by saved-item type complements the category
               filter for richer re-finding. Only surfaced in Saved view to keep
@@ -1537,7 +1658,7 @@ export default function MapPage() {
         <button
           className="wb-layers"
           onClick={() => {
-            const order = ['cbr', 'jitir', 'cia']
+            const order = ['cia', 'cbr', 'jitir']
             const next = order[(order.indexOf(method) + 1) % 3]
             setMethod(next); showToast(`Method: ${METHOD_LABEL[next]}`)
           }}
@@ -1562,6 +1683,39 @@ export default function MapPage() {
           )
         })()}
 
+        {/* ---- proactive notification (full-width map overlay, below the
+                weather + method tag + layers row). Anchored to the map, not
+                the sheet, so dragging the sheet doesn't move or hide it.
+                Slide-in animation kicks in on each new fired/forced banner. */}
+        {mode === 'map' && proactiveAlert && (() => {
+          const t = proactiveBannerText(
+            proactiveAlert.item,
+            proactiveAlert.reason,
+            proactiveAlert.signals,
+          )
+          return (
+            <div
+              className="wb-proactive wb-proactive--map"
+              onClick={() => openDetail(proactiveAlert.item.id)}
+              role="button"
+              tabIndex={0}
+            >
+              <Compass size={18} aria-hidden="true" />
+              <div className="wb-proactive-text">
+                <div className="wb-proactive-title">{t.title}</div>
+                <div className="wb-proactive-sub">{t.sub}</div>
+              </div>
+              <button
+                className="wb-proactive-x"
+                onClick={(e) => { e.stopPropagation(); dismissProactiveAlert() }}
+                aria-label="Dismiss"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )
+        })()}
+
         {/* ---- FABs (right edge) ------------------------------------------- */}
         <div ref={fabsRef} className="wb-fabs">
           <button className="wb-fab" onClick={() => setCenterTrigger(t => t + 1)} aria-label="My location">
@@ -1575,6 +1729,9 @@ export default function MapPage() {
             <Navigation size={22} />
           </button>
         </div>
+
+        {/* ---- theme toggle (bottom LEFT, mirrors the navigate FAB's y) ---- */}
+        <ThemeToggle ref={themeRef} />
 
         {/* ---- bottom sheet ------------------------------------------------- */}
         <div ref={sheetRef} className="wb-sheet">
@@ -1759,11 +1916,13 @@ export default function MapPage() {
           ) : (
             <>
           {/* Segmented control: ranking method in Map view only.
+              Tab order: For this moment is leftmost since it is the default
+              active method (Bug 3 reorder).
               Saved view's sort lives in the chip row above the sheet
               (Paper §3 — recency / frequency / alpha / proximity). */}
           {mode === 'map' && (
             <div className="wb-segmented">
-              {['cbr', 'jitir', 'cia'].map(m => (
+              {['cia', 'cbr', 'jitir'].map(m => (
                 <button key={m} className={`wb-seg ${method === m ? 'active' : ''}`}
                   onClick={() => { setMethod(m); showToast(`Ranked: ${METHOD_LABEL[m]}`) }}>
                   {METHOD_LABEL[m]}
@@ -1772,6 +1931,12 @@ export default function MapPage() {
             </div>
           )}
 
+          {/* Bug 3: at the lowest snap (sheet collapsed) the place list peeks
+              out under the tabs. Only render the list once the sheet has
+              been dragged up beyond the floor. Threshold sits slightly
+              above SNAP_FLOOR so the list also stays hidden right at the
+              boundary (avoids a flicker as the user dragged across). */}
+          {snapPx > SNAP_FLOOR + 40 && (
           <div className="wb-list">
             {list.length === 0 ? (
               (search.trim() || filter !== 'all' || activeType) ? (
@@ -1817,11 +1982,15 @@ export default function MapPage() {
                   )}
                 </>
               )
+              // Bug 8: capture the currently-visible slice so the detail
+              // panel's arrows cycle within this filter context.
+              const ctxIds = list.map(l => l.item.id)
+              const ctxLabel = mode === 'map' ? METHOD_LABEL[method] : 'Saved'
               if (mode === 'map') {
                 return (
                   <SwipeableRow
                     key={item.id}
-                    onTap={() => openDetail(item.id)}
+                    onTap={() => openDetail(item.id, { ids: ctxIds, label: ctxLabel })}
                     onDismiss={() => dismissRec(item.id)}
                   >
                     {content}
@@ -1829,12 +1998,13 @@ export default function MapPage() {
                 )
               }
               return (
-                <div key={item.id} className="wb-item" onClick={() => openDetail(item.id)}>
+                <div key={item.id} className="wb-item" onClick={() => openDetail(item.id, { ids: ctxIds, label: ctxLabel })}>
                   {content}
                 </div>
               )
             })}
           </div>
+          )}
           </>
           )}
             </>
@@ -1880,22 +2050,70 @@ export default function MapPage() {
         {/* ---- bottom nav (shared with TripPage) --------------------------- */}
         <TabBar current={mode} onModeSelect={changeMode} />
 
-        {/* ---- detail panel ('flipbook') ----------------------------------- */}
-        {detailItemId != null && (
-          <DetailPanel
-            itemId={detailItemId}
-            items={savedItems}
-            userLoc={userLoc}
-            onClose={() => setDetailItemId(null)}
-            onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); showToast(`Directions to ${item.name}`) }}
-            onDelete={(id) => { deleteItem(id); setDetailItemId(null) }}
-            onSwitch={(id) => openDetail(id)}
-          />
-        )}
+        {/* ---- detail panel ('flipbook') -----------------------------------
+              Bug 8: when a context was captured at openDetail time, walk
+              the arrow nav through that slice only; otherwise fall back to
+              the full saved list (marker tap / deep link). */}
+        {detailItemId != null && (() => {
+          const detailItems = detailContext
+            ? detailContext.ids
+                .map(id => savedItems.find(i => i.id === id))
+                .filter(Boolean)
+            : savedItems
+          return (
+            <DetailPanel
+              itemId={detailItemId}
+              items={detailItems}
+              contextLabel={detailContext?.label}
+              userLoc={userLoc}
+              onClose={() => { setDetailItemId(null); setDetailContext(null) }}
+              onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); setDetailContext(null); showToast(`Directions to ${item.name}`) }}
+              onDelete={(id) => { deleteItem(id); setDetailItemId(null); setDetailContext(null) }}
+              onSwitch={(id) => openDetail(id)}
+            />
+          )
+        })()}
 
         {/* ---- toast -------------------------------------------------------- */}
         {toast && <div className="wb-toast show">{toast}</div>}
       </div>
+
+      {/* FIX 4: More dropdown — portaled to <body> so the .wb-pills
+          horizontal-scroll container's overflow can't clip it. Anchored
+          via fixed positioning to the trigger's bounding rect (captured
+          in the moreOpen effect above). Opens downward over the map. */}
+      {moreOpen && moreTriggerRect && createPortal(
+        <div
+          ref={moreMenuRef}
+          className="wb-more-menu"
+          role="listbox"
+          aria-label="More categories"
+          style={{
+            position: 'fixed',
+            top: moreTriggerRect.bottom + 6,
+            left: moreTriggerRect.left,
+          }}
+        >
+          {MORE_PILLS.map(key => {
+            const c = CATEGORIES[key]; const Icon = c.Icon
+            const selected = filter === key
+            return (
+              <button
+                key={key}
+                type="button"
+                role="option"
+                aria-selected={selected}
+                className={`wb-more-menu-item${selected ? ' is-selected' : ''}`}
+                onClick={() => { pickPill(key); setMoreOpen(false) }}
+              >
+                <Icon size={14} aria-hidden="true" />
+                <span>{c.label}</span>
+              </button>
+            )
+          })}
+        </div>,
+        document.body
+      )}
     </>
   )
 }

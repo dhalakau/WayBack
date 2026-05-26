@@ -63,6 +63,33 @@
 }
 
 /* ============================================================
+   Dark theme overrides — re-introduced 2026-05-26 (superseding the
+   2026-05-21 removal noted above) per task spec. Keeps the warm
+   editorial feel: deep cocoa paper, off-white ink, softened coral pin.
+   Toggled via <html data-theme="dark">. Light mode is the default and
+   needs no explicit selector — the :root tokens above already cover it.
+   ============================================================ */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:      #1a1714;
+  --paper-soft: #2a2520;
+  --paper-warm: #221d18;
+  --ink:        #f0ebe2;
+  --ink-soft:   #b9b0a3;
+  --rule:       #3a342d;
+  --pin:        #e07a6e;
+  --pin-soft:   #7a3c34;
+  --map-bg:     #1a1714;
+}
+html[data-theme="dark"] .wb-app {
+  /* Scope-local overrides for tokens defined inside .wb-app. The handle
+     needs to lift off the dark surface; --accent-on keeps button text
+     readable on the (softened) coral primary. */
+  --handle: #6a635a;
+  --accent-on: #1a1714;
+}
+
+/* ============================================================
    Originated in MapPage.jsx ScopedStyles()
    ============================================================ */
 html, body, #root { height: 100%; margin: 0; padding: 0; overflow: hidden; }
@@ -155,6 +182,49 @@ body { font-family: var(--font-body); }
   background: var(--paper-warm);
   color: var(--ink);
   border: 1.5px solid var(--ink);
+}
+
+/* "More" category overflow dropdown (Bug 2). Anchored to the trailing
+   pill in the category row, opens upward toward the search bar so the
+   list doesn't push other top chrome around. */
+.wb-more-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+/* FIX 4: menu is portaled to <body> and positioned via inline `position:
+   fixed` styles set from JS (top/left tied to the trigger's bounding rect).
+   We only ship the visual chrome here. */
+.wb-more-menu {
+  min-width: 168px;
+  background: var(--paper-soft);
+  border: 0.5px solid var(--rule);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.38);
+  z-index: 950;
+  display: flex; flex-direction: column; gap: 2px;
+  animation: wbSortMenuIn 0.14s ease-out;
+}
+.wb-more-menu-item {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+}
+.wb-more-menu-item:hover:not(.is-selected) {
+  background: rgba(196,69,54,0.12);
+  color: var(--pin);
+}
+.wb-more-menu-item.is-selected {
+  color: var(--pin);
+  background: rgba(196,69,54,0.10);
 }
 
 /* Paper §3 — second-tier saved-item-type chips (Saved view only) */
@@ -274,6 +344,28 @@ body { font-family: var(--font-body); }
   width: 44px; height: 44px; border-radius: 22px; z-index: 500;
   display: flex; align-items: center; justify-content: center;
   color: var(--pin);
+}
+/* Theme toggle sits at the bottom-LEFT of the map, vertically aligned with
+   the bottom-most FAB (the navigate arrow) in the right-side cluster. Same
+   circular chrome and size as .wb-fab so the two buttons read as a pair
+   anchoring the bottom corners of the map area. The `bottom` value is
+   driven by JS (applyOffset) so the button tracks the sheet just like the
+   FAB cluster does. */
+.wb-theme-toggle {
+  position: absolute; left: 12px; bottom: 276px;
+  width: 50px; height: 50px; border-radius: 50%; z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--paper-soft); border: none; cursor: pointer;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(26,24,21,0.10), 0 2px 8px rgba(26,24,21,0.06);
+  transition: bottom 0.32s cubic-bezier(0.2,0.8,0.2,1), background 0.15s, color 0.15s;
+}
+.wb-theme-toggle:hover { color: var(--pin); }
+/* Add mode hides the bottom-corner chrome to keep the add-card focused.
+   FABs stay visible in all modes today, so the theme toggle does too in
+   Saved view. */
+.wb-app[data-mode="add"] .wb-theme-toggle {
+  opacity: 0; pointer-events: none;
 }
 .wb-method-tag {
   position: absolute; top: 124px; right: 64px;
@@ -623,6 +715,15 @@ body { font-family: var(--font-body); }
   align-self: flex-start;
   text-transform: uppercase; letter-spacing: 0.6px;
 }
+/* Bug 8 — tiny breadcrumb above the category chip telling the user which
+   filter context the arrow nav is scoped to ("From: For this moment"). */
+.wb-detail-crumb {
+  font-size: 11px;
+  color: var(--ink-soft);
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  align-self: flex-start;
+}
 .wb-detail-name {
   margin: 12px 0 4px;
   font-family: var(--font-display);
@@ -776,6 +877,47 @@ body { font-family: var(--font-body); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Proactive banner, map-overlay variant — single compact row anchored to
+   the map directly below the weather/time + method-tag + layers row.
+   top: 172px clears the layers button (bottom edge at 160px) with a 12px
+   gap. left/right: 12px match the search bar's horizontal range so the
+   banner reads as the next "row" of map chrome. Stays in place when the
+   bottom sheet drags, because it isn't a sheet child.
+   Height is intentionally intrinsic to content (no bottom, no height,
+   explicit min/max-height resets) — the previous version was rendering
+   as a tall empty box on some browsers. Solid paper-soft background
+   replaces the base's translucent pink so it reads as a real surface
+   floating over the map instead of a hollow outline. */
+.wb-proactive--map {
+  position: absolute;
+  top: 172px;
+  left: 12px;
+  right: 12px;
+  z-index: 500;
+  /* Defensive height bounds — keep the row intrinsic regardless of any
+     ancestor inset/flex weirdness. */
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  /* Re-declare flex layout on the variant so the single-row shape is
+     guaranteed even if the base rule is overridden elsewhere. */
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  /* Visual: solid surface + subtle pin-soft accent line. Box-shadow tuned
+     for floating-over-map chrome (heavier than the in-sheet default). */
+  background: var(--paper-soft);
+  border: 1px solid var(--pin-soft);
+  box-shadow: 0 6px 18px rgba(26,24,21,0.22), 0 1px 3px rgba(26,24,21,0.14);
+  animation: wbProactiveSlideIn 0.25s ease-out;
+}
+@keyframes wbProactiveSlideIn {
+  from { opacity: 0; transform: translateX(110%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
 /* ExplanationBreakdown — inline section (W4 brief; paper §4) ------ */
 /* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
 .wb-explain {
@@ -783,6 +925,17 @@ body { font-family: var(--font-body); }
   padding: 14px 14px 10px;
   background: var(--paper-soft);
   border-radius: 16px;
+}
+/* Bug 9: muted hint line above the section title, points to the
+   methodology modal so the strength bars stop reading as mystery
+   numbers. Tuned smaller than --text-xs so it sits quietly under
+   the cap-style title without competing. */
+.wb-explain-hint {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  line-height: 1.4;
+  opacity: 0.85;
 }
 .wb-explain-title {
   font-size: 12px; font-weight: 600;
@@ -797,7 +950,11 @@ body { font-family: var(--font-body); }
   background: rgba(255,255,255,0.03);
   border-radius: 12px;
 }
-.wb-explain-row[data-strength="strong"] { background: rgba(196,69,54,0.10); }
+/* FIX 7: the data-strength="strong" rule used to add a pink background to
+   rows with three bars, which read like "selected/active" — misleading
+   since strength is already shown by the bars. All rows now share the same
+   neutral row background; only the meter varies. The "none" rule stays as
+   a fade-out so rows with no evidence still visibly recede. */
 .wb-explain-row[data-strength="none"]   { opacity: 0.5; }
 .wb-explain-icon {
   width: 28px; height: 28px; border-radius: 50%;

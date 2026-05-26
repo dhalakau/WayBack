@@ -30,9 +30,19 @@ export default function ExplanationBreakdown({ item, userLoc }) {
   const now = new Date()
   const signals = computeSignals(item, userLoc, now)
 
+  // Bug 9: signal rows already render only the strength meter (no numeric
+  // "22 / 30" badge ever existed in this component), so the "delete the
+  // numeric badge" half of the spec is a no-op. The hint line below points
+  // users at the methodology modal so the bars stop reading as mystery
+  // numbers.
+  // NOTE: if a numeric badge is ever re-added (e.g. by surfacing the raw
+  // ciaProxy score), revisit and strip it here per Bug 9 intent.
   return (
     <>
       <div className="wb-explain">
+        <p className="wb-explain-hint">
+          Tap “How we picked these signals” to learn what the bars mean.
+        </p>
         <div className="wb-explain-title">Why you might want this now</div>
         <div className="wb-explain-list">
           {signals.map(sig => (
@@ -112,6 +122,22 @@ function AttributionModal({ onClose }) {
 
         <div className="wb-attr-eyebrow">Sappelli et al., 2017 &middot; §4</div>
         <h3 className="wb-attr-h">Methodology</h3>
+
+        {/* FIX 6: explain what the strength bars mean before walking through
+            the individual signals. Reuses the same card chrome as the
+            signal list below so it reads as the first entry. */}
+        <ul className="wb-attr-list wb-attr-list--top">
+          <li>
+            <div className="wb-attr-li-head"><b>Reading the strength bars</b></div>
+            <div className="wb-attr-li-body">
+              Each signal gets a strength rating shown as 1, 2, or 3 red bars
+              next to it. 1 bar means the signal is weak for this place. 2
+              bars means moderate. 3 bars means strong. The bars are computed
+              from the same client-side metrics described below, then
+              bucketed into three levels for at-a-glance reading.
+            </div>
+          </li>
+        </ul>
 
         <p className="wb-attr-lede">
           The four signals you saw map directly to the four evaluation
