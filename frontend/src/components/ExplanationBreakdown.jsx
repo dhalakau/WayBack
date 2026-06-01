@@ -85,7 +85,6 @@ function SignalRow({ signal }) {
 }
 
 function AttributionModal({ onClose }) {
-  // Close on Escape
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)

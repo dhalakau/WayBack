@@ -448,7 +448,6 @@ function formatRouteSummary(route, mode) {
   return `${mins} min ${verb}${dist ? ' · ' + dist : ''}`
 }
 
-// Travel-mode definitions: id, lucide icon, accessible label.
 const TRAVEL_MODES = [
   { id: 'foot',    Icon: Footprints, label: 'Walk' },
   { id: 'bike',    Icon: Bike,       label: 'Bike' },
@@ -514,7 +513,6 @@ function wmoToLabel(code) {
   return map[code] || 'Clear'
 }
 
-// Pick a lucide icon component for a (condition, isDay) pair.
 function weatherIconFor(condition, isDay) {
   if (condition === 'rain')   return CloudRain
   if (condition === 'snow')   return CloudSnow
@@ -817,7 +815,6 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
   }
   function onPointerUp() {
     if (startRef.current.locked === 'h' && Math.abs(tx) > 80) {
-      // swipe to next/prev
       const delta = tx < 0 ? 1 : -1
       setTx(tx < 0 ? -400 : 400)
       setTimeout(() => { go(delta); setTx(0) }, 180)
@@ -944,7 +941,6 @@ export default function MapPage() {
   // Paper §3 — saved-item ordering: recency, frequency, alpha, proximity.
   // Sort is applied AFTER category/search/type filters in listToShow().
   const [activeSort, setActiveSort] = useState('recent')
-  // Open/close state for the sort dropdown in the Saved sheet header.
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortDropdownRef = useRef(null)
   // Open/close state for the "More" category overflow dropdown next to the
@@ -969,7 +965,6 @@ export default function MapPage() {
   const [newPin, setNewPin] = useState(null)           // { lat, lng } while in add mode
   const [newPlace, setNewPlace] = useState({ name: '', category: '', notes: '' })
 
-  // NEW: phase-3 state
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
   // Bug 8: which slice of items the detail panel's left/right arrows walk
   // through. Set at openDetail call time from whichever list the user tapped
