@@ -1,0 +1,5 @@
+# Development / evaluation dependencies — NOT needed on the deployed server.
+# Install locally with:  pip install -r requirements-dev.txt
+-r requirements.txt
+pytest>=8.0
+matplotlib>=3.8

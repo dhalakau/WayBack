@@ -16,7 +16,7 @@ import TabBar from '../components/TabBar'
 // criteria the paper uses to evaluate single-item recommendations compose naturally
 // into multi-item plans.
 
-const API = 'http://localhost:8000'
+const API = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000'
 const USER_ID = 'user_demo'
 
 // Fixed Munich Hauptbahnhof — matches MapPage's demo location so the first

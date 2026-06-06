@@ -1,4 +1,5 @@
 import math
+import os
 import datetime
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -15,7 +16,12 @@ from methods.cia import CIARecommender
 Base.metadata.create_all(bind=engine)
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173", "http://localhost:3000"])
+
+# CORS origins are configurable via env var so the deployed frontend (Vercel)
+# can be allowed without touching code. Comma-separated list, e.g.:
+#   CORS_ORIGINS=https://wayback.vercel.app,http://localhost:5173
+_DEFAULT_ORIGINS = "http://localhost:5173,http://localhost:3000"
+CORS(app, origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", _DEFAULT_ORIGINS).split(",") if o.strip()])
 
 METHODS = {
     "cbr":   CBRRecommender(),

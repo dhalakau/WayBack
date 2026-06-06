@@ -1,0 +1,18 @@
+# Render Blueprint — deploys the WayBack backend on the free tier.
+# In the Render dashboard: New + → Blueprint → select this repo.
+# After the first deploy, update CORS_ORIGINS with the real Vercel URL.
+services:
+  - type: web
+    name: wayback-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    # seed.py resets the SQLite DB to its known-good 30-place state on every
+    # start — intentional, since the free-tier disk is ephemeral anyway.
+    startCommand: python seed.py && gunicorn app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: CORS_ORIGINS
+        value: http://localhost:5173,http://localhost:3000

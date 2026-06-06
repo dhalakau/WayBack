@@ -27,7 +27,7 @@ import ThemeToggle from '../components/ThemeToggle'
 // Constants
 // -----------------------------------------------------------------------------
 
-const API = 'http://localhost:8000'
+const API = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000'
 const USER_ID = 'user_demo'
 const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible demo location
 const DEFAULT_ZOOM = 15
@@ -1221,7 +1221,7 @@ export default function MapPage() {
       const res = await fetch(`${API}/saved-items?userId=${USER_ID}`)
       const data = await res.json()
       setSavedItems(data)
-    } catch { showToast('Backend not reachable on :8000') }
+    } catch { showToast('Backend not reachable') }
   }
   async function fetchRecs() {
     try {
