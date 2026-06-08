@@ -58,6 +58,35 @@ const MORE_PILLS = ['bar', 'accommodation', 'shopping', 'services', 'transport']
 const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
 const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', distance: 'Distance' }
 
+// Map an OSM key/value pair (from Photon search results) onto one of our 10
+// categories so an imported place is filed the same way a manual pin would be.
+// Falls back to 'attraction' for anything we do not explicitly recognize.
+function osmToCategory(key, value) {
+  if (key === 'shop') return 'shopping'
+  if (key === 'tourism') {
+    if (value === 'museum' || value === 'gallery') return 'museum'
+    if (value === 'hotel' || value === 'hostel' || value === 'guest_house' || value === 'motel') return 'accommodation'
+    if (value === 'zoo' || value === 'theme_park') return 'park'
+    return 'attraction'
+  }
+  if (key === 'leisure') {
+    if (value === 'park' || value === 'garden' || value === 'nature_reserve') return 'park'
+    return 'attraction'
+  }
+  if (key === 'historic') return 'attraction'
+  if (key === 'railway' || key === 'public_transport' || key === 'aeroway') return 'transport'
+  if (key === 'amenity') {
+    if (value === 'cafe' || value === 'ice_cream') return 'cafe'
+    if (value === 'restaurant' || value === 'fast_food' || value === 'food_court') return 'restaurant'
+    if (value === 'bar' || value === 'pub' || value === 'biergarten' || value === 'nightclub') return 'bar'
+    if (value === 'bus_station' || value === 'taxi') return 'transport'
+    if (value === 'museum' || value === 'arts_centre' || value === 'theatre' || value === 'cinema') return 'museum'
+    if (value === 'bank' || value === 'pharmacy' || value === 'hospital' || value === 'post_office' || value === 'clinic') return 'services'
+    return 'attraction'
+  }
+  return 'attraction'
+}
+
 // Editorial Paper: cream chrome AND cream map for light mode (CARTO Positron).
 // Dark mode pairs the warm cocoa chrome with CARTO Dark Matter so the map
 // itself reads as dark instead of an awkward light tile inside dark chrome.
@@ -968,6 +997,10 @@ export default function MapPage() {
   const [userLoc, setUserLoc] = useState({ lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] })
   const [newPin, setNewPin] = useState(null)           // { lat, lng } while in add mode
   const [newPlace, setNewPlace] = useState({ name: '', category: '', notes: '' })
+  const [placeQuery, setPlaceQuery] = useState('')     // Photon search box text
+  const [placeResults, setPlaceResults] = useState([]) // Photon GeoJSON features
+  const [placeSearching, setPlaceSearching] = useState(false)
+  const placeReqRef = useRef(0)                         // guards against stale responses
 
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
   // Bug 8: which slice of items the detail panel's left/right arrows walk
@@ -1019,6 +1052,7 @@ export default function MapPage() {
   const [geoActive, setGeoActive] = useState(false)
   const watchIdRef = useRef(null)
   const recenterOnNextFixRef = useRef(false)
+  const handledHashRef = useRef(null)
 
   // ---- sheet drag ------------------------------------------------------------
   const sheetRef = useRef(null)
@@ -1043,16 +1077,21 @@ export default function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // When arriving from the day plan via /#item-<id>, open that place's detail
+  // once saved items have loaded. Guard with handledHashRef so this runs once
+  // per hash: openDetail bumps savedItems (a dependency here) and the
+  // replaceState below does not update react-router's location, so without
+  // the guard the effect would re-fire and loop until React throws.
   useEffect(() => {
     if (!savedItems || savedItems.length === 0) return
-    const m = location.hash.match(/^#item-(.+)$/)
+    const hash = location.hash
+    if (handledHashRef.current === hash) return
+    const m = hash.match(/^#item-(.+)$/)
     if (!m) return
-    // Match on string id, but open with the real id so the strict equality
-    // checks inside openDetail and DetailPanel hold (item.id may be a number).
     const found = savedItems.find(it => String(it.id) === m[1])
     if (found) {
+      handledHashRef.current = hash
       openDetail(found.id)
-      // Clear the hash so a refresh does not re-open the panel.
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1074,6 +1113,30 @@ export default function MapPage() {
       }
     }
   }, [])
+
+  // Photon place search for the Add flow. Debounced 300 ms, min 3 chars, biased
+  // to userLoc. A request counter discards any response that arrives after a
+  // newer query has already been issued.
+  useEffect(() => {
+    const q = placeQuery.trim()
+    if (q.length < 3) { setPlaceResults([]); setPlaceSearching(false); return }
+    setPlaceSearching(true)
+    const reqId = ++placeReqRef.current
+    const t = setTimeout(async () => {
+      try {
+        const url = `https://photon.komoot.io/api?q=${encodeURIComponent(q)}&lat=${userLoc.lat}&lon=${userLoc.lng}&limit=5`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (placeReqRef.current !== reqId) return
+        setPlaceResults(Array.isArray(data?.features) ? data.features : [])
+      } catch {
+        if (placeReqRef.current === reqId) setPlaceResults([])
+      } finally {
+        if (placeReqRef.current === reqId) setPlaceSearching(false)
+      }
+    }, 300)
+    return () => clearTimeout(t)
+  }, [placeQuery, userLoc.lat, userLoc.lng])
 
   // When directions panel opens/closes, resize the bottom sheet:
   // expand to show the full nav panel, restore to peek state when closed.
@@ -1272,6 +1335,8 @@ export default function MapPage() {
     if (next === 'add') {
       setNewPin({ lat: userLoc.lat, lng: userLoc.lng })
       setNewPlace({ name: '', category: '', notes: '' })
+      setPlaceQuery('')
+      setPlaceResults([])
     } else {
       setNewPin(null)
     }
@@ -1314,6 +1379,36 @@ export default function MapPage() {
       if (!res.ok) throw new Error()
       await fetchSaved(); fetchRecs()
       showToast(`Saved · ${newPlace.name.trim()}`)
+      changeMode('map')
+    } catch { showToast('Save failed. Is the backend running?') }
+  }
+
+  // Photon result tap: save the place directly, no extra form step. Mirrors the
+  // POST shape of saveNewPlace. Coordinate order matters: Photon geometry is
+  // [lng, lat], so lat is coordinates[1] and lng is coordinates[0].
+  async function pickPlaceResult(feature) {
+    const p = feature.properties || {}
+    const coords = feature.geometry?.coordinates || []
+    const lng = coords[0]
+    const lat = coords[1]
+    if (lat == null || lng == null) { showToast('Could not read that place'); return }
+    const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
+    const name = p.name || streetLine || 'Unnamed place'
+    const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
+    const category = osmToCategory(p.osm_key, p.osm_value)
+    try {
+      const res = await fetch(`${API}/saved-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: USER_ID, name, category, notes: '', lat, lng, address, itemType: 'map_pin',
+        }),
+      })
+      if (!res.ok) throw new Error()
+      setPlaceQuery('')
+      setPlaceResults([])
+      await fetchSaved(); fetchRecs()
+      showToast(`Saved · ${name}`)
       changeMode('map')
     } catch { showToast('Save failed. Is the backend running?') }
   }
@@ -2084,6 +2179,49 @@ export default function MapPage() {
             <div className="wb-add-title">Save this spot</div>
             <button className="wb-add-x" aria-label="Cancel" onClick={() => changeMode('map')}><X size={16} /></button>
           </div>
+
+          {/* Search a real place (Photon). Tapping a result saves it directly. */}
+          <input
+            className="wb-input"
+            type="text"
+            placeholder="Search for a real place"
+            value={placeQuery}
+            onChange={e => setPlaceQuery(e.target.value)}
+          />
+          {placeQuery.trim().length >= 3 && (
+            <div className="wb-place-results">
+              {placeSearching && placeResults.length === 0 && (
+                <div className="wb-item-meta">Searching…</div>
+              )}
+              {!placeSearching && placeResults.length === 0 && (
+                <div className="wb-item-meta">No matches</div>
+              )}
+              {placeResults.map((feature, i) => {
+                const p = feature.properties || {}
+                const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
+                const title = p.name || streetLine || 'Unnamed place'
+                const secondary = [streetLine, p.city].filter(Boolean).join(', ')
+                const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
+                return (
+                  <div key={i} className="wb-item" onClick={() => pickPlaceResult(feature)}>
+                    <div className="wb-item-main">
+                      <div className="wb-item-name-row">
+                        <span className="wb-item-name">{title}</span>
+                        {catLabel && (
+                          <span className="wb-type-badge">
+                            <span className="wb-type-badge-label">{catLabel}</span>
+                          </span>
+                        )}
+                      </div>
+                      {secondary && <div className="wb-item-meta">{secondary}</div>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          <div className="wb-cat-label">Or drop a pin on the map</div>
           <div className="wb-add-loc">
             <MapPin size={18} color="#ea4335" />
             <div className="wb-add-loc-text">
