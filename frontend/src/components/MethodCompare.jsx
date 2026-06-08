@@ -32,9 +32,9 @@ export default function MethodCompare() {
       setLoading(true)
       try {
         const [cbr, jitir, cia] = await Promise.all([
-          fetchMethod('cbr',   context.lat, context.lng),
-          fetchMethod('jitir', context.lat, context.lng),
-          fetchMethod('cia',   context.lat, context.lng),
+          fetchMethod('cbr',   context.lat, context.lng, context.hour),
+          fetchMethod('jitir', context.lat, context.lng, context.hour),
+          fetchMethod('cia',   context.lat, context.lng, context.hour),
         ])
         if (!cancelled) setResults({ cbr, jitir, cia })
       } catch {
@@ -211,8 +211,12 @@ function MethodInfoModal({ onClose }) {
   return createPortal(modal, document.body)
 }
 
-async function fetchMethod(method, lat, lng) {
-  const params = new URLSearchParams({ userId: USER_ID, lat, lng, method })
+async function fetchMethod(method, lat, lng, hour) {
+  const when = new Date()
+  when.setHours(hour, 0, 0, 0)
+  const params = new URLSearchParams({
+    userId: USER_ID, lat, lng, method, time: when.getTime(),
+  })
   const res = await fetch(`${API}/recommendations?${params}`)
   if (!res.ok) return []
   const data = await res.json()
