@@ -860,7 +860,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
   const isFirst = idx <= 0
   const isLast = idx >= items.length - 1
   const distance = Math.round(haversineMeters(
-    DEFAULT_CENTER[0], DEFAULT_CENTER[1], item.lat, item.lng
+    userLoc.lat, userLoc.lng, item.lat, item.lng
   ))
 
   return (
