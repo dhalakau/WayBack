@@ -1040,6 +1040,21 @@ export default function MapPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    if (!savedItems || savedItems.length === 0) return
+    const m = location.hash.match(/^#item-(.+)$/)
+    if (!m) return
+    // Match on string id, but open with the real id so the strict equality
+    // checks inside openDetail and DetailPanel hold (item.id may be a number).
+    const found = savedItems.find(it => String(it.id) === m[1])
+    if (found) {
+      openDetail(found.id)
+      // Clear the hash so a refresh does not re-open the panel.
+      window.history.replaceState(null, '', window.location.pathname + window.location.search)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [savedItems, location.hash])
+
   // ---- initial data + geolocation -------------------------------------------
   useEffect(() => {
     // Geolocation intentionally disabled for the demo — fixed Hauptbahnhof
