@@ -1016,6 +1016,9 @@ export default function MapPage() {
 
   const [toast, setToast] = useState(null)
   const [centerTrigger, setCenterTrigger] = useState(0)
+  const [geoActive, setGeoActive] = useState(false)
+  const watchIdRef = useRef(null)
+  const recenterOnNextFixRef = useRef(false)
 
   // ---- sheet drag ------------------------------------------------------------
   const sheetRef = useRef(null)
@@ -1057,18 +1060,20 @@ export default function MapPage() {
 
   // ---- initial data + geolocation -------------------------------------------
   useEffect(() => {
-    // Geolocation intentionally disabled for the demo — fixed Hauptbahnhof
-    // start point gives a stable frame of reference for the navigation feature.
-    // To re-enable, uncomment the navigator.geolocation block below.
-    //
-    // if (navigator.geolocation) {
-    //   navigator.geolocation.getCurrentPosition(
-    //     pos => setUserLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-    //     () => {}, { timeout: 4000 }
-    //   )
-    // }
+    // Geolocation is opt-in via the Locate FAB (see handleLocate), not
+    // requested on load. Hauptbahnhof stays the default frame of reference
+    // until the user turns location on.
     fetchSaved()
   }, []) // eslint-disable-line
+
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current != null) {
+        navigator.geolocation.clearWatch(watchIdRef.current)
+        watchIdRef.current = null
+      }
+    }
+  }, [])
 
   // When directions panel opens/closes, resize the bottom sheet:
   // expand to show the full nav panel, restore to peek state when closed.
@@ -1410,6 +1415,50 @@ export default function MapPage() {
     setNavTarget(list[0].item)
   }
 
+  // Locate FAB: opt-in live geolocation. First tap starts watchPosition and
+  // recenters on the first fix; later taps just recenter on the current
+  // position. Permission denial or any error falls back to Hauptbahnhof.
+  // userLoc drives both the "you are here" marker and proximity ranking, so
+  // updates flow into fetchRecs automatically. A 50 m threshold keeps GPS
+  // jitter from spamming the backend while the user stands still.
+  function handleLocate() {
+    if (!('geolocation' in navigator)) {
+      showToast('Geolocation is not available')
+      return
+    }
+    if (watchIdRef.current != null) {
+      setCenterTrigger(t => t + 1)
+      return
+    }
+    recenterOnNextFixRef.current = true
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      pos => {
+        const next = { lat: pos.coords.latitude, lng: pos.coords.longitude }
+        if (recenterOnNextFixRef.current) {
+          recenterOnNextFixRef.current = false
+          setUserLoc(next)
+          setGeoActive(true)
+          setCenterTrigger(t => t + 1)
+        } else {
+          setUserLoc(prev =>
+            haversineMeters(prev.lat, prev.lng, next.lat, next.lng) > 50 ? next : prev
+          )
+        }
+      },
+      () => {
+        showToast('Location unavailable, using Hauptbahnhof')
+        if (watchIdRef.current != null) {
+          navigator.geolocation.clearWatch(watchIdRef.current)
+          watchIdRef.current = null
+        }
+        recenterOnNextFixRef.current = false
+        setGeoActive(false)
+        setUserLoc({ lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] })
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+    )
+  }
+
   // ---- derived: what the sheet's list shows ---------------------------------
   function listToShow() {
     const q = search.trim().toLowerCase()
@@ -1732,7 +1781,11 @@ export default function MapPage() {
 
         {/* ---- FABs (right edge) ------------------------------------------- */}
         <div ref={fabsRef} className="wb-fabs">
-          <button className="wb-fab" onClick={() => setCenterTrigger(t => t + 1)} aria-label="My location">
+          <button
+            className={`wb-fab ${geoActive ? 'is-active' : ''}`}
+            onClick={handleLocate}
+            aria-label={geoActive ? 'Recenter on my location' : 'Use my location'}
+          >
             <Locate size={22} />
           </button>
           <button
