@@ -754,10 +754,14 @@ function SwipeableRow({ onTap, onDismiss, children }) {
     } else if (lock === 'h') {
       // snap back — drag wasn't far enough
       setTx(0)
-    } else if (!moved) {
+    } else if (lock === null && !moved) {
       // pure tap (no horizontal lock, no movement) → fire tap
       onTap?.()
     }
+    startRef.current = { x: 0, y: 0, locked: null, moved: false }
+  }
+  function onPointerCancel() {
+    setTx(0)
     startRef.current = { x: 0, y: 0, locked: null, moved: false }
   }
 
@@ -769,7 +773,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerCancel={onPointerCancel}
     >
       {children}
     </div>
