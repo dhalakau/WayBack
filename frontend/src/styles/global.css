@@ -433,6 +433,31 @@ body { font-family: var(--font-body); }
 .wb-empty { padding: 40px 16px; text-align: center; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
 .wb-empty em { color: var(--ink); font-style: normal; }
 .wb-empty-hint { margin-top: 6px; font-size: 12px; opacity: 0.75; }
+
+/* Saved-search escape hatch: when the saved pool has no match for a query,
+   offer a one-tap map (Photon) search. Quiet, token-only, both layouts. */
+.wb-empty-escape {
+  margin-top: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.wb-empty-escape-line { font-size: 12px; color: var(--ink-soft); }
+.wb-empty-escape-btn {
+  background: transparent; border: 1px solid var(--rule);
+  border-radius: 18px; padding: 7px 14px;
+  font-size: 13px; color: var(--ink); cursor: pointer;
+}
+.wb-empty-escape-btn:hover { color: var(--pin); border-color: var(--pin); }
+/* Map-search results reuse the Add flow row look, with an explicit Save. */
+.wb-map-search { margin-top: 14px; text-align: left; }
+.wb-map-search-row { align-items: center; }
+.wb-map-search-save {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 1px solid var(--rule);
+  border-radius: 16px; padding: 6px 12px;
+  font-size: 12px; font-weight: 500; color: var(--ink); cursor: pointer;
+}
+.wb-map-search-save:hover { color: var(--pin); border-color: var(--pin); }
 .wb-item {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 12px 4px; border-bottom: 0.5px solid var(--rule);

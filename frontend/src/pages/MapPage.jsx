@@ -87,6 +87,15 @@ function osmToCategory(key, value) {
   return 'attraction'
 }
 
+// Photon (free OSM geocoder) lookup, shared by the Add flow's debounced search
+// and the saved-search escape hatch. Returns the GeoJSON feature array (or []).
+async function fetchPhoton(query, lat, lng) {
+  const url = `https://photon.komoot.io/api?q=${encodeURIComponent(query)}&lat=${lat}&lon=${lng}&limit=5`
+  const res = await fetch(url)
+  const data = await res.json()
+  return Array.isArray(data?.features) ? data.features : []
+}
+
 // Editorial Paper: cream chrome AND cream map for light mode (CARTO Positron).
 // Dark mode pairs the warm cocoa chrome with CARTO Dark Matter so the map
 // itself reads as dark instead of an awkward light tile inside dark chrome.
@@ -1042,6 +1051,14 @@ export default function MapPage() {
   const [placeSearching, setPlaceSearching] = useState(false)
   const placeReqRef = useRef(0)                         // guards against stale responses
 
+  // Saved-search escape hatch. The search box always searches the saved pool
+  // first (placeholder unchanged). When that returns nothing, an explicit
+  // "Search the map" action runs Photon once for the current query (never on
+  // keystroke). mapSearchQuery holds the query those results belong to.
+  const [mapSearchQuery, setMapSearchQuery] = useState(null)
+  const [mapSearchResults, setMapSearchResults] = useState([])
+  const [mapSearchLoading, setMapSearchLoading] = useState(false)
+
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
   // Bug 8: which slice of items the detail panel's left/right arrows walk
   // through. Set at openDetail call time from whichever list the user tapped
@@ -1165,11 +1182,9 @@ export default function MapPage() {
     const reqId = ++placeReqRef.current
     const t = setTimeout(async () => {
       try {
-        const url = `https://photon.komoot.io/api?q=${encodeURIComponent(q)}&lat=${userLoc.lat}&lon=${userLoc.lng}&limit=5`
-        const res = await fetch(url)
-        const data = await res.json()
+        const features = await fetchPhoton(q, userLoc.lat, userLoc.lng)
         if (placeReqRef.current !== reqId) return
-        setPlaceResults(Array.isArray(data?.features) ? data.features : [])
+        setPlaceResults(features)
       } catch {
         if (placeReqRef.current === reqId) setPlaceResults([])
       } finally {
@@ -1478,6 +1493,54 @@ export default function MapPage() {
       await fetchSaved(); fetchRecs()
       showToast(`Saved · ${name}`)
       changeMode('map')
+    } catch { showToast('Save failed. Is the backend running?') }
+  }
+
+  // Escape hatch: the saved-pool search found nothing, so run Photon once for
+  // the current query. Fires only on the explicit tap, never on keystroke.
+  async function runMapSearch() {
+    const q = search.trim()
+    if (!q) return
+    setMapSearchQuery(q)
+    setMapSearchLoading(true)
+    try {
+      setMapSearchResults(await fetchPhoton(q, userLoc.lat, userLoc.lng))
+    } catch {
+      setMapSearchResults([])
+    } finally {
+      setMapSearchLoading(false)
+    }
+  }
+
+  // Save a Photon result from the escape hatch. Same POST shape as the Add
+  // flow's pickPlaceResult, but instead of switching to Add mode it returns the
+  // search to normal saved-pool mode, with the saved pool now holding the item.
+  async function saveMapResult(feature) {
+    const p = feature.properties || {}
+    const coords = feature.geometry?.coordinates || []
+    const lng = coords[0]
+    const lat = coords[1]
+    if (lat == null || lng == null) { showToast('Could not read that place'); return }
+    const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
+    const name = p.name || streetLine || 'Unnamed place'
+    const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
+    const category = osmToCategory(p.osm_key, p.osm_value)
+    try {
+      const res = await fetch(`${API}/saved-items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: USER_ID, name, category, notes: '', lat, lng, address, itemType: 'map_pin',
+        }),
+      })
+      if (!res.ok) throw new Error()
+      await fetchSaved(); fetchRecs()
+      showToast(`Saved · ${name}`)
+      // Back to normal saved-pool mode. Clearing the query shows the full pool,
+      // which now includes the place just saved.
+      setMapSearchQuery(null)
+      setMapSearchResults([])
+      setSearch('')
     } catch { showToast('Save failed. Is the backend running?') }
   }
 
@@ -2173,6 +2236,61 @@ export default function MapPage() {
                 <div className="wb-empty">
                   No matches{search.trim() && <> for <em>“{search.trim()}”</em></>}.
                   <div className="wb-empty-hint">Try a different search or clear the filters.</div>
+                  {/* Escape hatch: the saved pool had nothing for this query.
+                      Offer a one-tap map search (Photon), never automatic. */}
+                  {search.trim() && (
+                    mapSearchQuery === search.trim() ? (
+                      <div className="wb-map-search">
+                        {mapSearchLoading && mapSearchResults.length === 0 && (
+                          <div className="wb-item-meta">Searching the map…</div>
+                        )}
+                        {!mapSearchLoading && mapSearchResults.length === 0 && (
+                          <div className="wb-item-meta">No places found for “{search.trim()}”.</div>
+                        )}
+                        {mapSearchResults.map((feature, i) => {
+                          const p = feature.properties || {}
+                          const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
+                          const title = p.name || streetLine || 'Unnamed place'
+                          const secondary = [streetLine, p.city].filter(Boolean).join(', ')
+                          const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
+                          return (
+                            <div key={i} className="wb-item wb-map-search-row">
+                              <div className="wb-item-main">
+                                <div className="wb-item-name-row">
+                                  <span className="wb-item-name">{title}</span>
+                                  {catLabel && (
+                                    <span className="wb-type-badge">
+                                      <span className="wb-type-badge-label">{catLabel}</span>
+                                    </span>
+                                  )}
+                                </div>
+                                {secondary && <div className="wb-item-meta">{secondary}</div>}
+                              </div>
+                              <button
+                                type="button"
+                                className="wb-map-search-save"
+                                onClick={() => saveMapResult(feature)}
+                                aria-label={`Save ${title}`}
+                              >
+                                <Plus size={16} /> Save
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="wb-empty-escape">
+                        <div className="wb-empty-escape-line">Not in your places</div>
+                        <button
+                          type="button"
+                          className="wb-empty-escape-btn"
+                          onClick={runMapSearch}
+                        >
+                          Search the map for “{search.trim()}”
+                        </button>
+                      </div>
+                    )
+                  )}
                 </div>
               ) : (
                 <div className="wb-empty">
