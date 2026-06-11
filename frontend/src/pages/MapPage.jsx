@@ -1753,7 +1753,7 @@ export default function MapPage() {
               onChange={e => setSearch(e.target.value)}
             />
             {search && <button className="wb-clear" onClick={() => setSearch('')} aria-label="Clear"><X size={14} /></button>}
-            <div className="wb-avatar">M</div>
+            <div className="wb-avatar">MUC</div>
           </div>
           <div className="wb-pills">
             <button className={`wb-pill ${filter === 'all' ? 'active' : ''}`} onClick={() => pickPill('all')}>
