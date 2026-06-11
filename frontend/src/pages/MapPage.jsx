@@ -1170,7 +1170,11 @@ export default function MapPage() {
     const found = savedItems.find(it => String(it.id) === m[1])
     if (found) {
       handledHashRef.current = hash
-      openDetail(found.id)
+      // From the day plan (TripItinerary), the tapped Link carries the
+      // itinerary's stops as router state, so the detail's arrows + pagination
+      // scope to the plan. Other deep links carry no state and fall back to the
+      // full saved pool (ctx undefined leaves detailContext untouched).
+      openDetail(found.id, location.state?.planContext)
       window.history.replaceState(null, '', window.location.pathname + window.location.search)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -205,6 +205,13 @@ function Itinerary({ items, userLoc }) {
   const totalMinutes = walkMinutes(interStopMeters)
   const categories = new Set(stops.map(s => s.item.category)).size
 
+  // Scope the detail panel to this itinerary: tapping a stop opens it with the
+  // plan's stops in itinerary order, so the detail's prev/next arrows and the
+  // pagination stay within the day plan rather than the full saved pool. The
+  // label drives the "From: ..." breadcrumb. Carried on the Link router state
+  // and read back in MapPage's deep-link effect; both layouts use this Link.
+  const planContext = { ids: stops.map(s => s.item.id), label: 'Your Munich day' }
+
   return (
     <>
       <ol className="wb-trip-list">
@@ -214,6 +221,7 @@ function Itinerary({ items, userLoc }) {
             stop={stop}
             isFirst={idx === 0}
             isLast={idx === stops.length - 1}
+            planContext={planContext}
           />
         ))}
       </ol>
@@ -231,15 +239,15 @@ function Itinerary({ items, userLoc }) {
   )
 }
 
-function StopCard({ stop, isFirst, isLast }) {
+function StopCard({ stop, isFirst, isLast, planContext }) {
   const { slot, item, distanceM, fromPrevious } = stop
   const meta = CATEGORY_META[item.category] || { label: item.category, Icon: MapPin }
   const CatIcon = meta.Icon
   const minutes = walkMinutes(distanceM)
 
-  // Tapping a card jumps back to the Map view centered (visually) on this item.
-  // We pass the item id via the URL hash so MapPage can pick it up if it
-  // wires that later; for now, the Link itself just routes to '/'.
+  // Tapping a card opens the item's detail on the map. The item id rides the
+  // URL hash; the itinerary's stops ride the router state (planContext) so the
+  // detail panel scopes its arrows and pagination to the plan, not the pool.
   return (
     <li className={`wb-trip-stop${isFirst ? ' is-first' : ''}${isLast ? ' is-last' : ''}`}>
       <div className="wb-trip-rail" aria-hidden="true">
@@ -247,7 +255,7 @@ function StopCard({ stop, isFirst, isLast }) {
         {!isLast && <span className="wb-trip-line" />}
       </div>
 
-      <Link to={`/#item-${item.id}`} className="wb-trip-card">
+      <Link to={`/#item-${item.id}`} state={{ planContext }} className="wb-trip-card">
         <div className="wb-trip-card-time">{slot.time}</div>
 
         <div className="wb-trip-card-head">
