@@ -1245,6 +1245,14 @@ body { font-family: var(--font-body); }
   line-height: 1.3;
   margin-top: 4px;
 }
+/* Ranking-basis caption: one quiet line stating how the column ranks, in the
+   same muted register as the subtitle at the smallest size already in use. */
+.wb-compare-col-basis {
+  font-family: var(--font-body);
+  font-size: 10px; color: var(--ink-soft);
+  line-height: 1.3;
+  margin-top: 4px;
+}
 .wb-compare-col-section {
   font-size: 10px; color: var(--ink-soft);
   margin-top: 6px;
@@ -1290,11 +1298,10 @@ body { font-family: var(--font-body); }
   overflow: hidden; text-overflow: ellipsis;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
 }
-.wb-compare-item-score {
-  font-family: var(--font-mono);
-  font-size: 10px; color: var(--ink-soft);
-  margin-top: 2px;
-}
+/* Strength meter under each row name. Reuses .wb-explain-meter (the detail
+   panel's signal bars) verbatim so the bars read identically; only the top
+   gap is set here, never the bar widths/gaps/colors. */
+.wb-compare-item-body .wb-explain-meter { margin-top: 4px; }
 .wb-compare-footer {
   display: flex; justify-content: center;
   padding: 12px 8px 4px;

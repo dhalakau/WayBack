@@ -75,9 +75,9 @@ export default function MethodCompare() {
             the paper §-ref stays as the smallest tertiary label, and the full
             algorithmic detail (CBR/JITIR/CIA) lives in the "How do these
             differ?" modal. */}
-        <MethodColumn label="Similar"     sub="Like-for-like from your saved kinds" section="§5.2" items={results.cbr}   loading={loading} />
-        <MethodColumn label="Relevant"    sub="Matched against what you noted"      section="§5.1" items={results.jitir} loading={loading} />
-        <MethodColumn label="Contextual"  sub="Tuned to here and now"                section="§5.3" items={results.cia}   loading={loading} />
+        <MethodColumn label="Similar"     sub="Like-for-like from your saved kinds" basis="Ranked by text similarity to your saved kinds" section="§5.2" items={results.cbr}   loading={loading} />
+        <MethodColumn label="Relevant"    sub="Matched against what you noted"      basis="Ranked by match with the current context"     section="§5.1" items={results.jitir} loading={loading} />
+        <MethodColumn label="Contextual"  sub="Tuned to here and now"                basis="Ranked by activation in your usage network"   section="§5.3" items={results.cia}   loading={loading} />
       </div>
 
       <div className="wb-compare-footer">
@@ -96,12 +96,20 @@ export default function MethodCompare() {
   )
 }
 
-function MethodColumn({ label, sub, section, items, loading }) {
+function MethodColumn({ label, sub, section, basis, items, loading }) {
+  // Per-column strength: normalize each row to this column's own top score.
+  // The three columns score on different scales (TF-IDF cosine, BM25, CIA
+  // activation), so strength is never compared across columns. Rank 1 maps to
+  // 3 bars by construction; a column whose max is 0 shows 1 bar for every row.
+  const maxScore = (!loading && Array.isArray(items))
+    ? items.slice(0, 5).reduce((m, r) => Math.max(m, r.score), 0)
+    : 0
   return (
     <div className="wb-compare-col">
       <div className="wb-compare-col-head">
         <div className="wb-compare-col-name">{label}</div>
         <div className="wb-compare-col-sub">{sub}</div>
+        <div className="wb-compare-col-basis">{basis}</div>
         <div className="wb-compare-col-section">{section}</div>
       </div>
       <div className="wb-compare-col-body">
@@ -113,15 +121,29 @@ function MethodColumn({ label, sub, section, items, loading }) {
         {!loading && items && items.length === 0 && (
           <div className="wb-compare-empty">No results</div>
         )}
-        {!loading && items && items.slice(0, 5).map((rec, idx) => (
-          <div className="wb-compare-item" key={`${rec.item.id}-${idx}`}>
-            <div className="wb-compare-item-rank">{idx + 1}</div>
-            <div className="wb-compare-item-body">
-              <div className="wb-compare-item-name">{rec.item.name}</div>
-              <div className="wb-compare-item-score">score {rec.score.toFixed(2)}</div>
+        {!loading && items && items.slice(0, 5).map((rec, idx) => {
+          const ratio = maxScore > 0 ? rec.score / maxScore : 0
+          const bars = maxScore > 0 ? (ratio >= 0.85 ? 3 : ratio >= 0.5 ? 2 : 1) : 1
+          return (
+            <div
+              className="wb-compare-item"
+              key={`${rec.item.id}-${idx}`}
+              title={`raw score: ${rec.score.toFixed(4)}`}
+            >
+              <div className="wb-compare-item-rank">{idx + 1}</div>
+              <div className="wb-compare-item-body">
+                <div className="wb-compare-item-name">{rec.item.name}</div>
+                {/* Same 1/2/3 segment meter as the detail panel's signal bars,
+                    so "strength" reads as one language across the app. */}
+                <div className="wb-explain-meter" aria-label={`Strength: ${bars} of 3`}>
+                  <span data-on={bars >= 1} />
+                  <span data-on={bars >= 2} />
+                  <span data-on={bars >= 3} />
+                </div>
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
