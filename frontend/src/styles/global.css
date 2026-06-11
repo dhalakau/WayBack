@@ -1515,3 +1515,141 @@ body { font-family: var(--font-body); }
 }
 .wb-nav-item.active { color: var(--pin, #c44536); }
 .wb-nav-item.active .nav-icon { background: rgba(196,69,54,0.10); }
+
+/* ============================================================
+   Desktop floating panels (DESIGN.md Spatial Principles, 900px)
+   ------------------------------------------------------------
+   Apple Maps pattern: the map is full-bleed edge to edge and the UI
+   lives in rounded floating panels over it, anchored left with a margin
+   gap. .wb-sidebar is display:contents on mobile (no box, zero effect);
+   here it becomes the main floating panel. Map chrome flips to
+   position:fixed so the fixed panel is never its containing block, and
+   moves to the right edge so nothing overlaps the panels. Panels use
+   paper/rule/shadow tokens so the cocoa dark theme applies. Per Motion
+   Principles only transform/opacity animate.
+   ============================================================ */
+.wb-sidebar { display: contents; }
+
+@media (min-width: 900px) {
+  /* Shell: drop the 440px phone frame and fill the viewport. */
+  .wb-app { max-width: none; margin: 0; box-shadow: none; }
+
+  /* Map is full-bleed; the panels float over it. */
+  .wb-map-wrap { inset: 0; }
+
+  /* Main floating panel: left edge, margin gap all around, rounded. */
+  .wb-sidebar {
+    display: flex; flex-direction: column;
+    position: fixed; left: 16px; top: 16px; bottom: 16px;
+    width: 380px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    overflow: hidden;
+    z-index: 600;
+  }
+
+  /* Search + pills sit at the top of the panel, in flow. */
+  .wb-sidebar .wb-top-overlay-stack {
+    position: static; inset: auto;
+    padding: 12px 12px 4px;
+    flex-shrink: 0;
+  }
+  /* Pills and type chips wrap to multiple lines instead of scrolling. */
+  .wb-sidebar .wb-pills,
+  .wb-sidebar .wb-type-chips { flex-wrap: wrap; overflow-x: visible; }
+  /* Plan view fills the panel body; no search row above the itinerary. */
+  .wb-app[data-mode="plan"] .wb-top-overlay-stack { display: none; }
+
+  /* The sheet becomes the panel body: in flow, fills the middle, scrolls
+     its list internally. The drag handle and any inline transform are
+     inert (the JS applyOffset/pointer handlers no-op on desktop). */
+  .wb-sidebar .wb-sheet {
+    position: static;
+    transform: none !important;
+    height: auto;
+    flex: 1 1 auto; min-height: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    z-index: auto;
+  }
+  .wb-sidebar .wb-handle-area { display: none; }
+
+  /* Tab bar pinned at the panel bottom in every panel state. */
+  .wb-sidebar .wb-nav {
+    position: static; transform: none;
+    left: auto; width: 100%; max-width: none;
+    flex-shrink: 0;
+  }
+
+  /* Map chrome flips to position:fixed (so the fixed panel is not its
+     containing block) and moves to the top/bottom RIGHT, clear of the
+     left-anchored panels. The bottom transition is dropped so crossing the
+     breakpoint never animates a layout property. */
+  .wb-weather        { position: fixed; left: auto; right: 16px; top: 16px; }
+  .wb-layers         { position: fixed; left: auto; right: 16px; top: 64px; }
+  .wb-method-tag     { position: fixed; left: auto; right: 68px; top: 72px; }
+  .wb-proactive--map { position: fixed; left: auto; right: 16px; top: 120px; max-width: 360px; }
+  .wb-fabs {
+    position: fixed; left: auto; right: 16px; bottom: 16px;
+    transition: opacity 0.2s;
+  }
+  /* Bottom-left would sit over the left panel, so the theme toggle moves
+     bottom-right, just above the FAB cluster. */
+  .wb-theme-toggle {
+    position: fixed; left: auto; right: 16px; bottom: 140px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  /* Add card overlays the main panel body (tab bar stays visible) and slides
+     in from the left. */
+  .wb-add-card {
+    position: fixed;
+    left: 16px; right: auto; top: 16px; bottom: 76px;
+    width: 380px; max-height: none;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    z-index: 620;
+    transform: translateX(-130%);
+  }
+  .wb-app[data-mode="add"] .wb-add-card { transform: translateX(0); }
+
+  /* Detail panel. Fallback (no room for two panels) covers the main panel. */
+  .wb-detail {
+    left: 16px; right: auto; top: 16px; bottom: 16px;
+    width: 380px;
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.18);
+    overflow: hidden;
+  }
+  /* Second floating panel beside the main one when there is room (>=840px). */
+  .wb-detail--beside { left: 412px; }
+
+  /* Compare floats centered in the map area, to the right of the panel. */
+  .wb-compare-floating {
+    position: fixed; z-index: 650;
+    top: 24px; bottom: 24px;
+    left: 412px; right: 24px;
+    width: min(760px, calc(100vw - 412px - 24px));
+    margin-inline: auto;
+    overflow-y: auto;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.22);
+    padding: 8px 8px 16px;
+  }
+  .wb-compare-floating-x {
+    position: absolute; top: 12px; right: 12px;
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--paper-soft); color: var(--ink-soft);
+    border: 1px solid var(--rule); cursor: pointer; z-index: 1;
+  }
+  .wb-compare-floating-x:hover { color: var(--pin); border-color: var(--pin); }
+}

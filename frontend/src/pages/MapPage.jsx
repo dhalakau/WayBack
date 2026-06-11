@@ -18,6 +18,7 @@ import {
 import { getExplanationText } from '../utils/explanationText'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
 import MethodCompare from '../components/MethodCompare'
+import TripItinerary from '../components/TripItinerary'
 import TypeBadge from '../components/TypeBadge'
 import TicketCountdown from '../components/TicketCountdown'
 import TabBar from '../components/TabBar'
@@ -827,7 +828,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
 // Swipe left/right (or use the chevrons) to flip between saved places.
 // -----------------------------------------------------------------------------
 
-function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc, feedbackDone, onFeedback }) {
+function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc, feedbackDone, onFeedback, beside }) {
   const idx = items.findIndex(i => i.id === itemId)
   const item = items[idx]
   const [tx, setTx] = useState(0)
@@ -877,7 +878,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
   ))
 
   return (
-    <div className="wb-detail" role="dialog" aria-modal="true" aria-label={item.name}>
+    <div className={`wb-detail${beside ? ' wb-detail--beside' : ''}`} role="dialog" aria-modal="true" aria-label={item.name}>
       <button className="wb-detail-close" onClick={onClose} aria-label="Close">
         <X size={20} />
       </button>
@@ -1124,6 +1125,22 @@ export default function MapPage() {
   // trigger re-renders. Updated in applyOffset() below.
   const [snapPx, setSnapPx] = useState(200)
 
+  // ---- responsive layout -----------------------------------------------------
+  // Desktop split layout kicks in at 900px (DESIGN.md Spatial Principles).
+  // Everything below 900px stays byte-identical to the mobile-first build; the
+  // desktop layer is this single flag plus @media (min-width: 900px) CSS. The
+  // sheet drag machinery (applyOffset, pointer handlers) is bypassed on desktop
+  // so its inline transforms can never leak into the sidebar layout.
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 900px)').matches
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 900px)')
+    const onChange = (e) => setIsDesktop(e.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
   // When arriving from another route (e.g. TripPage tapping the Saved or Add
   // tab), honor `?mode=` so the tab the user pressed actually opens.
   const location = useLocation()
@@ -1131,6 +1148,10 @@ export default function MapPage() {
     const params = new URLSearchParams(location.search)
     const next = params.get('mode')
     if (next === 'saved' || next === 'add') changeMode(next)
+    // Plan is a desktop-only in-panel mode (mobile keeps the /trip route, which
+    // is why TripPage redirects here as ?mode=plan on desktop). Ignored on
+    // mobile so a stray ?mode=plan there just lands on the map.
+    if (next === 'plan' && isDesktop) changeMode('plan')
     // Intentionally only on first mount — subsequent changes use changeMode().
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -1749,6 +1770,9 @@ export default function MapPage() {
   }
 
   function applyOffset(offsetFromBottom) {
+    // Desktop drives the sheet through the sidebar flex column, not inline
+    // transforms. No-op here so nothing writes onto the desktop nodes.
+    if (isDesktop) return
     const sheet = sheetRef.current
     if (!sheet) return
     // The sheet's height is bound to viewport (height: calc(100% - 60px - 28px)),
@@ -1771,6 +1795,8 @@ export default function MapPage() {
   // takes over once the user drags or switches modes.
 
   function onHandlePointerDown(e) {
+    // The handle is hidden on desktop; ignore any stray pointer events too.
+    if (isDesktop) return
     if (mode !== 'map' && mode !== 'saved') return
     e.currentTarget.setPointerCapture?.(e.pointerId)
     sheetRef.current?.classList.add('dragging')
@@ -1795,9 +1821,31 @@ export default function MapPage() {
     applyOffset(clamped)
   }
 
+  // Crossing the 900px boundary in either direction. Going to desktop, strip
+  // the inline transform/bottom the mobile sheet drag left on the sheet + FAB
+  // cluster + theme toggle so the sidebar CSS owns them cleanly. Going back to
+  // mobile, re-apply the mode's peek offset so the sheet is not stuck flush.
+  useEffect(() => {
+    if (isDesktop) {
+      if (sheetRef.current) sheetRef.current.style.transform = ''
+      if (fabsRef.current)  fabsRef.current.style.bottom = ''
+      if (themeRef.current) themeRef.current.style.bottom = ''
+    } else {
+      // Plan is a desktop-only mode; on mobile there is no panel to host it, so
+      // fall back to the map (mobile reaches the plan via the /trip route).
+      const m = mode === 'plan' ? 'map' : mode
+      if (mode === 'plan') setMode('map')
+      applyOffset(m === 'saved' ? Math.max(SNAP_PEEK, window.innerHeight - 240) : SNAP_PEEK)
+    }
+    // Runs only when the layout flips; uses mode/applyOffset as of that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDesktop])
+
   // ---- render ----------------------------------------------------------------
   const list = listToShow()
-  const sheetTitle = mode === 'saved' ? `Saved (${savedItems.length})` : 'Your places'
+  const sheetTitle = mode === 'saved' ? `Saved (${savedItems.length})`
+    : mode === 'plan' ? 'Your Munich day'
+    : 'Your places'
   // FIX 3: tile set follows the theme. Positron for light, Dark Matter for
   // dark; the TileLayer is keyed on `theme` below so Leaflet remounts and
   // fetches the new set when the toggle flips.
@@ -1861,6 +1909,15 @@ export default function MapPage() {
             It now renders INSIDE the bottom sheet directly below the method
             picker (see below) so it reads as an extension of the picker
             block, not a floating overlay. */}
+
+        {/* ---- sidebar wrapper -------------------------------------------------
+            On mobile this is `display: contents` (no box, no effect): the search
+            stack, the map chrome, the sheet, the add card, and the tab bar all
+            behave exactly as direct children of .wb-app. At >=900px it becomes a
+            fixed 380px right column (flex), the chrome flips to position:fixed so
+            it escapes the column and stays over the map, and the search/sheet/tab
+            bar stack vertically. One wrapper, two layouts. */}
+        <div className="wb-sidebar">
 
         {/* ---- top overlay stack: search + pills only. */}
         <div className="wb-top-overlay-stack">
@@ -2202,9 +2259,15 @@ export default function MapPage() {
             )}
           </div>
 
-          {mode === 'saved' && compareMode ? (
+          {mode === 'saved' && compareMode && !isDesktop ? (
             <div className="wb-list">
               <MethodCompare />
+            </div>
+          ) : isDesktop && mode === 'plan' ? (
+            /* Plan tab on desktop: the day itinerary fills the panel body where
+               the place list normally sits, map stays live behind the panel. */
+            <div className="wb-list wb-list--plan">
+              <TripItinerary items={savedItems} userLoc={userLoc} />
             </div>
           ) : (
             <>
@@ -2229,7 +2292,7 @@ export default function MapPage() {
               been dragged up beyond the floor. Threshold sits slightly
               above SNAP_FLOOR so the list also stays hidden right at the
               boundary (avoids a flicker as the user dragged across). */}
-          {snapPx > SNAP_FLOOR + 40 && (
+          {(isDesktop || snapPx > SNAP_FLOOR + 40) && (
           <div className="wb-list">
             {list.length === 0 ? (
               (search.trim() || filter !== 'all' || activeType) ? (
@@ -2441,6 +2504,8 @@ export default function MapPage() {
         {/* ---- bottom nav (shared with TripPage) --------------------------- */}
         <TabBar current={mode} onModeSelect={changeMode} />
 
+        </div>{/* ---- /sidebar wrapper ---------------------------------------- */}
+
         {/* ---- detail panel ('flipbook') -----------------------------------
               Bug 8: when a context was captured at openDetail time, walk
               the arrow nav through that slice only; otherwise fall back to
@@ -2459,6 +2524,7 @@ export default function MapPage() {
               userLoc={userLoc}
               feedbackDone={feedbackSubmitted.has(detailItemId)}
               onFeedback={submitFeedback}
+              beside={isDesktop}
               onClose={() => { setDetailItemId(null); setDetailContext(null) }}
               onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); setDetailContext(null); showToast(`Directions to ${item.name}`) }}
               onDelete={(id) => { deleteItem(id); setDetailItemId(null); setDetailContext(null) }}
@@ -2466,6 +2532,26 @@ export default function MapPage() {
             />
           )
         })()}
+
+        {/* ---- desktop compare overlay -------------------------------------
+            The 380px sidebar is too narrow for MethodCompare's three columns,
+            so on desktop the Compare view floats over the map instead of taking
+            over the sidebar list. Closing it returns to the list (which stays
+            mounted in the sidebar behind it). Mobile keeps the inline version
+            inside the sheet. */}
+        {isDesktop && mode === 'saved' && compareMode && (
+          <div className="wb-compare-floating" role="dialog" aria-label="Compare methods">
+            <button
+              type="button"
+              className="wb-compare-floating-x"
+              onClick={() => setCompareMode(false)}
+              aria-label="Close comparison"
+            >
+              <X size={18} />
+            </button>
+            <MethodCompare />
+          </div>
+        )}
 
         {/* ---- toast -------------------------------------------------------- */}
         {toast && <div className="wb-toast show">{toast}</div>}
