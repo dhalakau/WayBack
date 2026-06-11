@@ -578,6 +578,13 @@ body { font-family: var(--font-body); }
   color: var(--ink); outline: none;
 }
 .wb-input::placeholder { color: var(--ink-soft); }
+/* iOS Safari auto-zooms any focused input whose font-size is under 16px and
+   never zooms back. Mobile inputs are bumped to 16px to remove the trigger;
+   desktop (>=900px) keeps its smaller 14px since it never auto-zooms. */
+@media (max-width: 899.98px) {
+  .wb-search-input,
+  .wb-input { font-size: 16px; }
+}
 .wb-cat-label {
   font-size: 11px; color: var(--ink-soft);
   letter-spacing: 0.4px; text-transform: uppercase;
