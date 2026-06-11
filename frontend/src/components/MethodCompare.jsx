@@ -51,14 +51,6 @@ export default function MethodCompare() {
     <div className="wb-compare">
       <div className="wb-compare-header">
         <div className="wb-compare-title">Compare methods</div>
-        <button
-          type="button"
-          className="wb-compare-info"
-          onClick={() => setShowMethodInfo(true)}
-        >
-          <BookOpen size={13} aria-hidden="true" />
-          <span>How do these differ?</span>
-        </button>
       </div>
 
       <div className="wb-compare-context-strip">
@@ -88,9 +80,15 @@ export default function MethodCompare() {
         <MethodColumn label="Contextual"  sub="Tuned to here and now"                section="§5.3" items={results.cia}   loading={loading} />
       </div>
 
-      <div className="wb-compare-note">
-        Same saved items, same context. Three different rankings. This is
-        the comparison at the heart of Sappelli et&nbsp;al. (2017).
+      <div className="wb-compare-footer">
+        <button
+          type="button"
+          className="wb-compare-info"
+          onClick={() => setShowMethodInfo(true)}
+        >
+          <BookOpen size={13} aria-hidden="true" />
+          <span>How do these differ?</span>
+        </button>
       </div>
 
       {showMethodInfo && <MethodInfoModal onClose={() => setShowMethodInfo(false)} />}

@@ -1295,13 +1295,9 @@ body { font-family: var(--font-body); }
   font-size: 10px; color: var(--ink-soft);
   margin-top: 2px;
 }
-.wb-compare-note {
-  font-size: 10.5px;
-  color: var(--ink-soft);
-  font-style: italic;
-  text-align: center;
+.wb-compare-footer {
+  display: flex; justify-content: center;
   padding: 12px 8px 4px;
-  line-height: 1.5;
 }
 
 
