@@ -24,7 +24,7 @@ This rejects the most common category reflexes:
 - Inter plus purple gradients reads as "Stripe-school AI startup"
 - Sparkles plus rounded cards reads as "ChatGPT-era AI feature"
 
-Instead, the aesthetic commits to **Editorial Paper**: cream paper everywhere, pin red as the single signature accent, ink for text and structure. The map joins the paper (CartoDB Positron tiles); there is no dark surface in the system. References include Moleskine field notebooks, printed city atlases, and archival research journals.
+Instead, the aesthetic commits to **Editorial Paper**: cream paper everywhere, pin red as the single signature accent, ink for text and structure. The map joins the paper (CartoDB Positron tiles in light mode). Editorial Paper is light-first; a warm cocoa dark counterpart (re-introduced 2026-05-26, see Decision Log) swaps to CARTO Dark Matter tiles. References include Moleskine field notebooks, printed city atlases, and archival research journals.
 
 This direction aligns with the research foundation. The Sappelli paper's central concept is re-finding, meaning past artifacts surfacing into present awareness. Paper aesthetics literally reproduce that metaphor.
 
@@ -68,6 +68,27 @@ Editorial Paper palette:
 
 **Single accent rule:** `--pin` is the only signature accent. It should never appear next to `--accent-fallback`. Pick one per surface.
 
+**Dark counterpart tokens.** Re-introduced 2026-05-26 (see Decision Log). Toggled via `<html data-theme="dark">`; light mode is the default and uses the `:root` tokens above. Current overrides as they exist in `src/styles/global.css`:
+
+```css
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --paper:      #1a1714;
+  --paper-soft: #2a2520;
+  --paper-warm: #221d18;
+  --ink:        #f0ebe2;
+  --ink-soft:   #b9b0a3;
+  --rule:       #3a342d;
+  --pin:        #e07a6e;
+  --pin-soft:   #7a3c34;
+  --map-bg:     #1a1714;
+}
+html[data-theme="dark"] .wb-app {
+  --handle: #6a635a;
+  --accent-on: #1a1714;
+}
+```
+
 ---
 
 ## Motion Principles
@@ -110,17 +131,33 @@ These are project-specific bans on top of the Impeccable defaults.
 
 1. **Sparkles icon (lucide-react):** banned in all UI. Currently used in three places. Replaced with Compass (proactive banner), MapPin filled (item reason line), and removed entirely from ExplanationBreakdown action prediction.
 2. **Per-category diagonal gradients:** replaced with single-color category washes or typographic heroes (see Color Tokens).
-3. **3-stat hero metric row** (Distance / Saved / Views, MapPage.jsx:877-890): replaced with a single italic sentence in 17 to 19px Fraunces. Example: "Five visits over six weeks. The last one was Tuesday." Distance folds into the address line.
+3. ~~3-stat hero metric row~~ Ban withdrawn 2026-06-11, see Decision Log. The Distance / Saved / Views stat row in the detail panel is a sanctioned component.
 4. **Em dashes in UI copy:** replaced with periods, colons, or parentheses. Hyphens in compound words are fine.
 5. **Default iOS drag handle** (`.wb-handle`, 36 by 4px gray pill): replaced with a thin `--pin` line that subtly pulses on first session load.
 6. **Generic "M" avatar** (`.wb-avatar`, MapPage.jsx:1893): either a real user photo or a small "MUC" city tag in JetBrains Mono, never a placeholder letter.
 
 ---
 
+## Method Mapping (canonical)
+
+| Method | Paper section | Compare column | Map tab label | Default |
+|---|---|---|---|---|
+| JITIR | 5.1 | Relevant | For this moment | yes |
+| CBR | 5.2 | Similar | Based on history | |
+| CIA | 5.3 | Contextual | Near you | |
+
+The offline evaluation additionally includes the paper's random baseline as a fourth method, matching the experimental design of Sappelli et al. (2017) Section 6. This table is the single source of truth for method naming. The M3 deck, the user study form, the in-app methodology modal, and the final report must reference it.
+
 ## Decision Log
 
 | Date | Decision | Rationale |
 |---|---|---|
+| 2026-06-11 | Canonical method mapping committed and enforced. JITIR (paper 5.1) = "For this moment" (Compare column: Relevant), default tab. CBR (5.2) = "Based on history" (Compare column: Similar). CIA (5.3) = "Near you" (Compare column: Contextual). | A paper-grounding audit against the Sappelli et al. (2017) source text found the frontend contradicting itself: MethodCompare had 5.1 and 5.2 swapped on column props and modal copy, METHOD_LABEL assigned every tab label to the wrong method (the default tab claimed JITIR's label while serving CIA), and the CIA expansion misread Interactive as Item. Fixed in two commits before any evaluation data was collected, so all dogfooding and user study sessions run against the correct mapping. |
+| 2026-06-11 | Proactive banner canonical framing: the banner follows the JITIR proactive paradigm (paper 3.3, background query, proactive surfacing) and uses the CIA activation score as its strength signal (6.3, CIA strongest at action prediction). It polls /recommendations with method=cia every 30 seconds independent of the active tab, walks the ranked list, and surfaces the first non-dismissed item passing the composite four-criterion gate. Rendered as a map overlay anchored below the weather and method row, independent of the bottom sheet. | Earlier documentation described the banner inconsistently (JITIR paradigm in the slides, top CIA recommendation in code comments). Both were half right; this entry fixes the canonical one-sentence framing. Tab independence matters: switching the default tab to JITIR did not change banner semantics because the banner never reads the active method's scores. |
+| 2026-06-11 | Anti-pattern ban 3 (3-stat hero metric row) withdrawn. The Distance / Saved / Views row in the detail panel stays; the italic Fraunces sentence replacement is retired unbuilt. Ban 6 (placeholder M avatar) is enforced instead: replaced with a JetBrains Mono MUC city tag. | M2 practice overruled the original aesthetic call on ban 3. The stat row was presented as a feature in the M2 walkthrough and earned its place: the three numbers are the raw inputs to the four paper-criteria signals shown directly below it, so displaying them explicitly supports explanation transparency rather than undermining the editorial register. A ban contradicted by shipped, presented reality is worse for governance than a withdrawn one. Ban 6 had no such justification and was simply unexecuted; fixed in code. |
+| 2026-06-08 | Place search via Photon (free OSM geocoder, no API key) added to the Add flow, debounced 300 ms, biased to userLoc. OSM key/value pairs map onto the 10 WayBack categories via osmToCategory(), falling back to 'attraction' for unrecognized tags. | The save flow previously only supported manual pin drops, which limited dogfooding and user study sessions to seed data. Real-place search makes the saved pool authentic. The category fallback is deliberate: a wrong-but-plausible category beats blocking the save, and miscategorizations surface naturally during dogfooding as evaluation findings. |
+| 2026-06-08 | Opt-in live geolocation via watchPosition, triggered by the locate button. Hauptbahnhof remains the default frame of reference until the user opts in, and the permanent fallback on denial. Requires the HTTPS deployment. | Context relevance signals (Right here, proximity gating on the proactive banner, distance sorting) are only honest with a real position. Opt-in keeps the demo deterministic by default while letting real-use sessions run on true context. |
+| 2026-05-26 | Dark mode re-introduced after Swayamsidh review, superseding the 2026-05-21 removal. Warm cocoa palette (deep cocoa paper, off-white ink, softened coral pin) with CARTO Dark Matter tiles. Toggle persists via localStorage as data-theme on html. | The light-only stance assumed Editorial Paper could not survive inversion. The cocoa variant keeps the editorial warmth (no neutral gray dark mode) and extends usability to evening contexts, which matter for a time-of-day-aware tourism app. Design Philosophy is amended: Editorial Paper is light-first with a warm dark counterpart, not light-only. |
 | 2026-05-17 | Aesthetic direction committed: Editorial Paper | Aligns with Sappelli re-finding concept. Rejects category reflex. Preserves engineering work while replacing visual default. |
 | 2026-05-17 | Type system committed: Fraunces, Public Sans, JetBrains Mono | Replaces system-font default from Vite template. Establishes display, body, and numeral hierarchy. |
 | 2026-05-17 | Single signature motion moment: time-of-day ambient drift | Leverages existing weather and clock infrastructure. Rare in this product category to have UI that responds to time. |

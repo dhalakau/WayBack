@@ -768,6 +768,32 @@ body { font-family: var(--font-body); }
   border: 0.5px solid var(--rule);
 }
 
+/* Feedback control on the detail panel: quiet thumbs up / down posting to
+   /feedback. Editorial Paper register: transparent buttons, hairline rule
+   border, chip-matched radius, --pin only as the hover accent. */
+.wb-feedback {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.wb-feedback-q {
+  font-size: 13px; color: var(--ink-soft);
+}
+.wb-feedback-btns {
+  display: flex; gap: 8px; margin-left: auto;
+}
+.wb-feedback-btn {
+  width: 34px; height: 34px;
+  background: transparent;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.wb-feedback-btn:hover { color: var(--pin); border-color: var(--pin); }
+.wb-feedback-done {
+  font-size: 13px; color: var(--ink-soft);
+}
+
 /* Paper §3 — ticket event countdown (only shown for itemType=ticket) */
 .wb-ticket-countdown {
   display: flex; align-items: center; gap: 12px;

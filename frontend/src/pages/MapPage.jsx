@@ -13,7 +13,7 @@ import {
   Footprints, Bike, Car, ArrowLeft,
   Map as MapIcon, ChevronLeft, ChevronRight,
   Ticket, StickyNote, Tags,
-  ChevronDown, Check,
+  ChevronDown, Check, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
@@ -818,7 +818,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
 // Swipe left/right (or use the chevrons) to flip between saved places.
 // -----------------------------------------------------------------------------
 
-function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc }) {
+function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc, feedbackDone, onFeedback }) {
   const idx = items.findIndex(i => i.id === itemId)
   const item = items[idx]
   const [tx, setTx] = useState(0)
@@ -942,6 +942,38 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
 
           <ExplanationBreakdown item={item} userLoc={userLoc} />
 
+          {/* Feedback on this recommendation (POST /feedback). The score row
+              and explanation above are the raw inputs; this captures whether
+              the suggestion landed, feeding the offline evaluation. One
+              surface only: the detail panel, never list rows or the banner. */}
+          <div className="wb-feedback">
+            {feedbackDone ? (
+              <div className="wb-feedback-done">Noted. This feeds our evaluation.</div>
+            ) : (
+              <>
+                <span className="wb-feedback-q">Was this useful right now?</span>
+                <div className="wb-feedback-btns">
+                  <button
+                    type="button"
+                    className="wb-feedback-btn"
+                    aria-label="Useful"
+                    onClick={() => onFeedback(item.id, true)}
+                  >
+                    <ThumbsUp size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="wb-feedback-btn"
+                    aria-label="Not useful"
+                    onClick={() => onFeedback(item.id, false)}
+                  >
+                    <ThumbsDown size={16} />
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="wb-detail-actions">
             <button className="wb-detail-primary" onClick={() => onNavigate(item)}>
               <Navigation size={18} /> Directions
@@ -975,6 +1007,10 @@ export default function MapPage() {
   // ---- state -----------------------------------------------------------------
   const [mode, setMode] = useState('map')              // map | saved | add
   const [method, setMethod] = useState('jitir')
+  // Item ids the user has rated via the detail-panel feedback control this
+  // session. Reopening a rated item shows the confirmation, not the buttons.
+  // Session-only by design: no localStorage, so a fresh load lets re-rating.
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(() => new Set())
   // Paper §3 — saved-item ordering: recency, frequency, alpha, proximity.
   // Sort is applied AFTER category/search/type filters in listToShow().
   const [activeSort, setActiveSort] = useState('recent')
@@ -1335,6 +1371,31 @@ export default function MapPage() {
     clearTimeout(toastTimerRef.current)
     toastTimerRef.current = setTimeout(() => setToast(null), 1600)
   }, [])
+
+  // POST /feedback for the open item. Body matches the backend handler:
+  // itemId as integer, method uppercased (the handler stores it raw and the
+  // stats endpoint groups on its uppercase form), context snapshot inline.
+  // On success the id joins feedbackSubmitted so the panel swaps to its
+  // confirmation; on failure the buttons stay usable and a toast explains.
+  async function submitFeedback(itemId, useful) {
+    try {
+      const res = await fetch(`${API}/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: USER_ID,
+          itemId: Number(itemId),
+          useful,
+          method: method.toUpperCase(),
+          contextSnapshot: { lat: userLoc.lat, lng: userLoc.lng, time: Date.now() },
+        }),
+      })
+      if (!res.ok) throw new Error('feedback rejected')
+      setFeedbackSubmitted(prev => new Set(prev).add(itemId))
+    } catch {
+      showToast('Could not send feedback')
+    }
+  }
 
   // ---- mode transitions -----------------------------------------------------
   function changeMode(next) {
@@ -2278,6 +2339,8 @@ export default function MapPage() {
               items={detailItems}
               contextLabel={detailContext?.label}
               userLoc={userLoc}
+              feedbackDone={feedbackSubmitted.has(detailItemId)}
+              onFeedback={submitFeedback}
               onClose={() => { setDetailItemId(null); setDetailContext(null) }}
               onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); setDetailContext(null); showToast(`Directions to ${item.name}`) }}
               onDelete={(id) => { deleteItem(id); setDetailItemId(null); setDetailContext(null) }}
