@@ -55,7 +55,7 @@ const PRIMARY_PILLS = ['attraction', 'restaurant', 'cafe', 'museum', 'park']
 // Overflow categories surfaced behind the "More" chip. Order picked so the
 // most-tapped categories from the seed dataset sit on top.
 const MORE_PILLS = ['bar', 'accommodation', 'shopping', 'services', 'transport']
-const METHOD_LABEL = { cbr: 'Near me', jitir: 'From history', cia: 'For this moment' }
+const METHOD_LABEL = { cbr: 'Based on history', jitir: 'For this moment', cia: 'Near you' }
 const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', distance: 'Distance' }
 
 // Map an OSM key/value pair (from Photon search results) onto one of our 10
@@ -103,8 +103,8 @@ const TILE_ATTRIB = '&copy; OpenStreetMap &copy; CARTO'
 // -----------------------------------------------------------------------------
 
 // Bug 6: WayBack ranking-method icon. Three dots arranged in a triangle
-// inside a circle, one dot per method (For this moment / Near me / From
-// history). Distinct from the previous Google-Maps-style stacked rhombi.
+// inside a circle, one dot per method (For this moment / Based on history /
+// Near you). Distinct from the previous Google-Maps-style stacked rhombi.
 function LayersIcon({ size = 22 }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -610,7 +610,11 @@ function contextBoost(category, weather, hour) {
 // -----------------------------------------------------------------------------
 
 /**
- * Decide whether the top CIA recommendation deserves a proactive banner.
+ * Decide whether the top recommendation deserves a proactive banner.
+ *
+ * The banner follows the JITIR proactive paradigm (Section 3.3: background
+ * query, proactive surfacing). The item's CIA activation score serves as the
+ * strength signal (Section 6.3: CIA is strongest at action prediction).
  *
  * Approximates Sappelli et al.'s four evaluation criteria (Section 4) as
  * client-side signals:
@@ -970,7 +974,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
 export default function MapPage() {
   // ---- state -----------------------------------------------------------------
   const [mode, setMode] = useState('map')              // map | saved | add
-  const [method, setMethod] = useState('cia')
+  const [method, setMethod] = useState('jitir')
   // Paper §3 — saved-item ordering: recency, frequency, alpha, proximity.
   // Sort is applied AFTER category/search/type filters in listToShow().
   const [activeSort, setActiveSort] = useState('recent')
@@ -1039,8 +1043,9 @@ export default function MapPage() {
   const [compareMode, setCompareMode] = useState(false)
 
   // Proactive notification (W4 project brief: "proactively recommend ... based on current situation").
-  // Surfaces the top CIA recommendation when contextual signals reinforce it.
-  // See paper Section 6.3 (Action Prediction) for why CIA is the chosen method here.
+  // Follows the JITIR proactive paradigm (paper Section 3.3: background query,
+  // proactive surfacing). The top item's CIA activation score is the strength
+  // signal (paper Section 6.3: CIA is strongest at action prediction).
   const [proactiveAlert, setProactiveAlert] = useState(null)  // { item, reason, score, signals } or null
   const [dismissedAlerts, setDismissedAlerts] = useState(() => {
     try { return new Set(JSON.parse(localStorage.getItem('wb_dismissed_alerts') || '[]')) }
@@ -1251,8 +1256,10 @@ export default function MapPage() {
   // Proactive notification polling (W4 project brief requirement).
   // Calls the existing /recommendations endpoint with method=cia every 30s and
   // evaluates whether the top-ranked item satisfies the composite signal gate
-  // defined by evaluateProactiveSignal() above. CIA is selected per paper §6.3
-  // (best at action prediction).
+  // defined by evaluateProactiveSignal() above. This follows the JITIR proactive
+  // paradigm (paper §3.3: background query, proactive surfacing); the CIA
+  // activation score is the strength signal (paper §6.3: CIA is strongest at
+  // action prediction).
   useEffect(() => {
     let cancelled = false
 
@@ -1816,7 +1823,7 @@ export default function MapPage() {
         <button
           className="wb-layers"
           onClick={() => {
-            const order = ['cia', 'cbr', 'jitir']
+            const order = ['jitir', 'cbr', 'cia']
             const next = order[(order.indexOf(method) + 1) % 3]
             setMethod(next); showToast(`Method: ${METHOD_LABEL[next]}`)
           }}
@@ -2078,13 +2085,13 @@ export default function MapPage() {
           ) : (
             <>
           {/* Segmented control: ranking method in Map view only.
-              Tab order: For this moment is leftmost since it is the default
-              active method (Bug 3 reorder).
+              Tab order: For this moment (JITIR) is leftmost since it is the
+              default active method (Bug 3 reorder).
               Saved view's sort lives in the chip row above the sheet
               (Paper §3 — recency / frequency / alpha / proximity). */}
           {mode === 'map' && (
             <div className="wb-segmented">
-              {['cia', 'cbr', 'jitir'].map(m => (
+              {['jitir', 'cbr', 'cia'].map(m => (
                 <button key={m} className={`wb-seg ${method === m ? 'active' : ''}`}
                   onClick={() => { setMethod(m); showToast(`Ranked: ${METHOD_LABEL[m]}`) }}>
                   {METHOD_LABEL[m]}
