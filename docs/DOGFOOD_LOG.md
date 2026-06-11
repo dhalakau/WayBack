@@ -10,4 +10,6 @@ Severity applies to BUG and UX rows; REC and IDEA rows can leave it blank.
 
 | date time | where / context | what I tried | what happened | type | sev | note |
 |---|---|---|---|---|---|---|
-| 2026-06-12 09:10 | example row, delete me | opened For this moment before leaving home | suggested a cafe 200m away, made sense for the hour | REC | | explanation showed Right here + Good time of day |
+| 2026-06-11 22:29 | home, desktop, browsing the day plan | opened a stop's detail from Your Munich day, used arrows to flip through the 5 stops | arrows cycled the full 30-item pool (9 / 30), not the itinerary | BUG | P1 | detailContext never set on the Plan path; fixed same night |
+| 2026-06-11 22:35 | desktop, compare view | tapped How do these differ | link clipped under the floating panel close button; footer line redundant | UX | P2 | link moved to panel bottom, footer removed; fixed same night |
+| 2026-06-11 22:45 | desktop, compare view | read the three columns as a user would | raw scores (0.06 vs 1.79 vs 0.95) read as comparable across columns but aren't; meaningless to users | REC | | replaced with per-column strength bars, raw kept in tooltip; fixed before user study |
