@@ -851,6 +851,14 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
   const item = items[idx]
   const [tx, setTx] = useState(0)
   const startRef = useRef({ x: 0, y: 0, locked: null })
+  // During a horizontal drag the transform is written straight to the DOM via
+  // pageRef inside one requestAnimationFrame per frame (dxRef holds the latest
+  // delta), so the heavy panel subtree (ExplanationBreakdown) is not re-rendered
+  // every frame. React state (tx) drives only the eased settle on release.
+  const pageRef = useRef(null)
+  const dxRef = useRef(0)
+  const draggingRef = useRef(false)
+  const rafRef = useRef(0)
   if (!item) return null
 
   const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
@@ -863,6 +871,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
 
   function onPointerDown(e) {
     startRef.current = { x: e.clientX, y: e.clientY, locked: null }
+    dxRef.current = 0
   }
   function onPointerMove(e) {
     if (e.pointerType === 'mouse') return
@@ -876,16 +885,33 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
         startRef.current.locked = 'v'
       }
     }
-    if (startRef.current.locked === 'h') setTx(dx)
+    if (startRef.current.locked === 'h') {
+      dxRef.current = dx
+      if (!draggingRef.current) {
+        draggingRef.current = true
+        pageRef.current?.classList.add('wb-dragging')   // transition: none while tracking
+      }
+      if (!rafRef.current) {
+        rafRef.current = requestAnimationFrame(() => {
+          rafRef.current = 0
+          if (pageRef.current) pageRef.current.style.transform = `translateX(${dxRef.current}px)`
+        })
+      }
+    }
   }
   function onPointerUp() {
-    if (startRef.current.locked === 'h' && Math.abs(tx) > 80) {
-      const delta = tx < 0 ? 1 : -1
-      setTx(tx < 0 ? -400 : 400)
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = 0 }
+    draggingRef.current = false
+    pageRef.current?.classList.remove('wb-dragging')    // restore transition for the settle
+    const dx = dxRef.current
+    if (startRef.current.locked === 'h' && Math.abs(dx) > 80) {
+      const delta = dx < 0 ? 1 : -1
+      setTx(dx < 0 ? -400 : 400)
       setTimeout(() => { go(delta); setTx(0) }, 180)
     } else {
       setTx(0)
     }
+    dxRef.current = 0
     startRef.current = { x: 0, y: 0, locked: null }
   }
 
@@ -902,8 +928,9 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
       </button>
 
       <div
+        ref={pageRef}
         className="wb-detail-page"
-        style={{ transform: `translateX(${tx}px)`, transition: startRef.current.locked === 'h' && tx !== 0 && Math.abs(tx) < 400 ? 'none' : 'transform 0.22s' }}
+        style={{ transform: `translateX(${draggingRef.current ? dxRef.current : tx}px)` }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

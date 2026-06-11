@@ -745,7 +745,11 @@ body { font-family: var(--font-body); }
   flex: 1; display: flex; flex-direction: column;
   overflow-y: auto;
   touch-action: pan-y;
+  transition: transform 0.22s;
 }
+/* While the finger is tracking, transition is off so the panel follows 1:1;
+   it is restored on release for the eased settle. Toggled in DetailPanel. */
+.wb-detail-page.wb-dragging { transition: none; }
 @media (hover: hover) and (pointer: fine) {
   .wb-detail-page { touch-action: auto !important; }
 }
