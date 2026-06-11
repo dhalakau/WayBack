@@ -458,6 +458,16 @@ body { font-family: var(--font-body); }
   font-size: 12px; font-weight: 500; color: var(--ink); cursor: pointer;
 }
 .wb-map-search-save:hover { color: var(--pin); border-color: var(--pin); }
+/* Already-saved state for a Photon result row: same pill footprint as the Save
+   button, but muted and inert so a duplicate cannot be saved a second time. */
+.wb-result-saved {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 4px;
+  border: 1px solid var(--rule);
+  border-radius: 16px; padding: 6px 12px;
+  font-size: 12px; font-weight: 500; color: var(--ink-soft);
+}
+.wb-place-results .wb-item[data-saved="true"] { cursor: default; align-items: center; }
 .wb-item {
   display: flex; align-items: flex-start; gap: 12px;
   padding: 12px 4px; border-bottom: 0.5px solid var(--rule);

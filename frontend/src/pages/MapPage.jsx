@@ -237,6 +237,24 @@ function haversineMeters(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a))
 }
 
+// Frontend dedupe guard (the backend has no dedupe yet, tracked separately): a
+// Photon result counts as already saved when an existing item shares its display
+// name (case-insensitive, trimmed) and sits within 50 m. The name is derived the
+// same way the save handlers derive it, so the check matches what would be saved.
+function featureMatchesSaved(feature, savedItems) {
+  const p = feature.properties || {}
+  const coords = feature.geometry?.coordinates || []
+  const lng = coords[0]
+  const lat = coords[1]
+  if (lat == null || lng == null) return false
+  const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
+  const name = (p.name || streetLine || 'Unnamed place').trim().toLowerCase()
+  return savedItems.some(it =>
+    (it.name || '').trim().toLowerCase() === name &&
+    haversineMeters(lat, lng, it.lat, it.lng) <= 50
+  )
+}
+
 // Fetch a real route from the appropriate backend for the requested mode.
 // - foot / bike / car → OSRM public demo (free, no API key)
 // - transit           → Transitous MOTIS 2 API (free; community-run, see policy)
@@ -1500,6 +1518,9 @@ export default function MapPage() {
     const lng = coords[0]
     const lat = coords[1]
     if (lat == null || lng == null) { showToast('Could not read that place'); return }
+    // Second layer over the disabled row state, covering the race where the
+    // pool changed after the results rendered.
+    if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
@@ -1546,6 +1567,9 @@ export default function MapPage() {
     const lng = coords[0]
     const lat = coords[1]
     if (lat == null || lng == null) { showToast('Could not read that place'); return }
+    // Second layer over the disabled row state, covering the race where the
+    // pool changed after the results rendered.
+    if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
@@ -2320,6 +2344,7 @@ export default function MapPage() {
                           const title = p.name || streetLine || 'Unnamed place'
                           const secondary = [streetLine, p.city].filter(Boolean).join(', ')
                           const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
+                          const saved = featureMatchesSaved(feature, savedItems)
                           return (
                             <div key={i} className="wb-item wb-map-search-row">
                               <div className="wb-item-main">
@@ -2333,14 +2358,20 @@ export default function MapPage() {
                                 </div>
                                 {secondary && <div className="wb-item-meta">{secondary}</div>}
                               </div>
-                              <button
-                                type="button"
-                                className="wb-map-search-save"
-                                onClick={() => saveMapResult(feature)}
-                                aria-label={`Save ${title}`}
-                              >
-                                <Plus size={16} /> Save
-                              </button>
+                              {saved ? (
+                                <span className="wb-result-saved" aria-label={`${title} already saved`}>
+                                  <Check size={14} aria-hidden="true" /> Saved
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="wb-map-search-save"
+                                  onClick={() => saveMapResult(feature)}
+                                  aria-label={`Save ${title}`}
+                                >
+                                  <Plus size={16} /> Save
+                                </button>
+                              )}
                             </div>
                           )
                         })}
@@ -2455,8 +2486,14 @@ export default function MapPage() {
                 const title = p.name || streetLine || 'Unnamed place'
                 const secondary = [streetLine, p.city].filter(Boolean).join(', ')
                 const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
+                const saved = featureMatchesSaved(feature, savedItems)
                 return (
-                  <div key={i} className="wb-item" onClick={() => pickPlaceResult(feature)}>
+                  <div
+                    key={i}
+                    className="wb-item"
+                    data-saved={saved ? 'true' : undefined}
+                    onClick={saved ? undefined : () => pickPlaceResult(feature)}
+                  >
                     <div className="wb-item-main">
                       <div className="wb-item-name-row">
                         <span className="wb-item-name">{title}</span>
@@ -2468,6 +2505,11 @@ export default function MapPage() {
                       </div>
                       {secondary && <div className="wb-item-meta">{secondary}</div>}
                     </div>
+                    {saved && (
+                      <span className="wb-result-saved" aria-label={`${title} already saved`}>
+                        <Check size={14} aria-hidden="true" /> Saved
+                      </span>
+                    )}
                   </div>
                 )
               })}
