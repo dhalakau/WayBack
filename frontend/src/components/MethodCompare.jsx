@@ -83,8 +83,8 @@ export default function MethodCompare() {
             the paper §-ref stays as the smallest tertiary label, and the full
             algorithmic detail (CBR/JITIR/CIA) lives in the "How do these
             differ?" modal. */}
-        <MethodColumn label="Similar"     sub="Like-for-like from your saved kinds" section="§5.1" items={results.cbr}   loading={loading} />
-        <MethodColumn label="Relevant"    sub="Matched against what you noted"      section="§5.2" items={results.jitir} loading={loading} />
+        <MethodColumn label="Similar"     sub="Like-for-like from your saved kinds" section="§5.2" items={results.cbr}   loading={loading} />
+        <MethodColumn label="Relevant"    sub="Matched against what you noted"      section="§5.1" items={results.jitir} loading={loading} />
         <MethodColumn label="Contextual"  sub="Tuned to here and now"                section="§5.3" items={results.cia}   loading={loading} />
       </div>
 
@@ -171,7 +171,7 @@ function MethodInfoModal({ onClose }) {
 
         <ul className="wb-attr-list">
           <li>
-            <div className="wb-attr-li-head"><b>CBR</b> &middot; Content-Based Recommender (§5.1)</div>
+            <div className="wb-attr-li-head"><b>CBR</b> &middot; Content-Based Recommender (§5.2)</div>
             <div className="wb-attr-li-body">
               Builds a text representation of every saved item and ranks by
               similarity to a context vector. Tends to favor items whose name,
@@ -179,7 +179,7 @@ function MethodInfoModal({ onClose }) {
             </div>
           </li>
           <li>
-            <div className="wb-attr-li-head"><b>JITIR</b> &middot; Just-In-Time Information Retrieval (§5.2)</div>
+            <div className="wb-attr-li-head"><b>JITIR</b> &middot; Just-In-Time Information Retrieval (§5.1)</div>
             <div className="wb-attr-li-body">
               Treats the current context as a search query and runs information
               retrieval over the saved items. Favors strong textual matches and
@@ -187,7 +187,7 @@ function MethodInfoModal({ onClose }) {
             </div>
           </li>
           <li>
-            <div className="wb-attr-li-head"><b>CIA</b> &middot; Contextual Item Activation (§5.3)</div>
+            <div className="wb-attr-li-head"><b>CIA</b> &middot; Contextual Interactive Activation (§5.3)</div>
             <div className="wb-attr-li-body">
               Builds a network of items and context nodes, then spreads
               activation across the network using Grossberg&apos;s equation
