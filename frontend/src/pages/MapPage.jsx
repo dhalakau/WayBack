@@ -1380,6 +1380,14 @@ export default function MapPage() {
   // Derived: the route data for the currently-selected travel mode.
   const routeData = routesByMode[travelMode] ?? null
 
+  // Derived: are we ranking around the Hauptbahnhof fallback rather than a real
+  // fix? True when live geolocation is off AND userLoc still sits at the demo
+  // default. Drives the quiet location-source notice atop the list.
+  const usingFallbackLoc =
+    !geoActive &&
+    userLoc.lat === DEFAULT_CENTER[0] &&
+    userLoc.lng === DEFAULT_CENTER[1]
+
   // Proactive notification polling (W4 project brief requirement).
   // Calls the existing /recommendations endpoint with method=cia every 30s and
   // evaluates whether the top-ranked item satisfies the composite signal gate
@@ -2373,6 +2381,19 @@ export default function MapPage() {
               boundary (avoids a flicker as the user dragged across). */}
           {(isDesktop || snapPx > SNAP_FLOOR + 40) && (
           <div className="wb-list">
+            {/* Location-source notice. In fallback mode the recommendations
+                rank around the station, which is easy to miss. Surface it
+                quietly and let a tap hand off to the same locate flow as the
+                FAB; it disappears the moment a real fix is active. */}
+            {mode === 'map' && usingFallbackLoc && (
+              <button
+                type="button"
+                className="wb-loc-fallback"
+                onClick={handleLocate}
+              >
+                Showing results near Hauptbahnhof. Tap to use your location
+              </button>
+            )}
             {list.length === 0 ? (
               (search.trim() || filter !== 'all' || activeType) ? (
                 <div className="wb-empty">
