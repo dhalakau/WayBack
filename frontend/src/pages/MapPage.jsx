@@ -1106,6 +1106,12 @@ export default function MapPage() {
   const [mapSearchResults, setMapSearchResults] = useState([])
   const [mapSearchLoading, setMapSearchLoading] = useState(false)
 
+  // In-flight guard shared by every save path (pin-drop + both Photon paths).
+  // A save POST takes a moment; without this the Save control stays live and
+  // rapid taps fire duplicate POSTs (observed: 6x CinemaxX, 9x Pinakotheken).
+  // It disables the control and drives the pending label until the POST settles.
+  const [saving, setSaving] = useState(false)
+
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
   // Bug 8: which slice of items the detail panel's left/right arrows walk
   // through. Set at openDetail call time from whichever list the user tapped
@@ -1557,6 +1563,8 @@ export default function MapPage() {
   // ---- save / delete --------------------------------------------------------
   async function saveNewPlace() {
     if (!newPlace.name.trim()) { showToast('Add a name first'); return }
+    if (saving) return
+    setSaving(true)
     try {
       const res = await fetch(`${API}/saved-items`, {
         method: 'POST',
@@ -1576,6 +1584,7 @@ export default function MapPage() {
       showToast(`Saved · ${newPlace.name.trim()}`)
       changeMode('map')
     } catch { showToast('Save failed. Is the backend running?') }
+    finally { setSaving(false) }
   }
 
   // Photon result tap: save the place directly, no extra form step. Mirrors the
@@ -1590,6 +1599,8 @@ export default function MapPage() {
     // Second layer over the disabled row state, covering the race where the
     // pool changed after the results rendered.
     if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
+    if (saving) return
+    setSaving(true)
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
@@ -1609,6 +1620,7 @@ export default function MapPage() {
       showToast(`Saved · ${name}`)
       changeMode('map')
     } catch { showToast('Save failed. Is the backend running?') }
+    finally { setSaving(false) }
   }
 
   // Escape hatch: the saved-pool search found nothing, so run Photon once for
@@ -1639,6 +1651,8 @@ export default function MapPage() {
     // Second layer over the disabled row state, covering the race where the
     // pool changed after the results rendered.
     if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
+    if (saving) return
+    setSaving(true)
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
@@ -1660,6 +1674,7 @@ export default function MapPage() {
       setMapSearchResults([])
       setSearch('')
     } catch { showToast('Save failed. Is the backend running?') }
+    finally { setSaving(false) }
   }
 
   async function deleteItem(id) {
@@ -2459,6 +2474,7 @@ export default function MapPage() {
                                   type="button"
                                   className="wb-map-search-save"
                                   onClick={() => saveMapResult(feature)}
+                                  disabled={saving}
                                   aria-label={`Save ${title}`}
                                 >
                                   <Plus size={16} /> Save
@@ -2589,7 +2605,7 @@ export default function MapPage() {
                     key={i}
                     className="wb-item"
                     data-saved={saved ? 'true' : undefined}
-                    onClick={saved ? undefined : () => pickPlaceResult(feature)}
+                    onClick={saved || saving ? undefined : () => pickPlaceResult(feature)}
                   >
                     <div className="wb-item-main">
                       <div className="wb-item-name-row">
@@ -2641,7 +2657,9 @@ export default function MapPage() {
               )
             })}
           </div>
-          <button className="wb-save-btn" onClick={saveNewPlace}>Save</button>
+          <button className="wb-save-btn" onClick={saveNewPlace} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
 
         {/* ---- bottom nav (shared with TripPage) --------------------------- */}
