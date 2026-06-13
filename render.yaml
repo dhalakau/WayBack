@@ -1,6 +1,7 @@
 # Render Blueprint — deploys the WayBack backend on the free tier.
 # In the Render dashboard: New + → Blueprint → select this repo.
-# After the first deploy, update CORS_ORIGINS with the real Vercel URL.
+# After the first deploy, update CORS_ORIGINS with the real Vercel URL,
+# and set DATABASE_URL (see below) to your managed Postgres connection string.
 services:
   - type: web
     name: wayback-backend
@@ -8,11 +9,18 @@ services:
     plan: free
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    # seed.py resets the SQLite DB to its known-good 30-place state on every
-    # start — intentional, since the free-tier disk is ephemeral anyway.
+    # seed.py is now idempotent: it seeds the 30 Munich places only when the
+    # database is empty, and never deletes existing rows. Safe to run on every
+    # start — it populates a fresh DB once, then leaves saved places alone.
     startCommand: python seed.py && gunicorn app:app --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: CORS_ORIGINS
         value: http://localhost:5173,http://localhost:3000
+      # Managed Postgres connection string (e.g. from Neon). Marked sync:false
+      # so it is set in the Render dashboard, not committed to the repo.
+      # Without it the app falls back to ephemeral SQLite and data is lost on
+      # every deploy.
+      - key: DATABASE_URL
+        sync: false

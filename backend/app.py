@@ -182,14 +182,38 @@ def create_saved_item():
     if not data or not data.get("name"):
         return jsonify({"error": "name is required"}), 400
 
+    name = data["name"].strip()
+    lat  = data.get("lat")
+    lng  = data.get("lng")
+
     db = SessionLocal()
+
+    # Dedupe (P0 fix): a place is "already saved" if an existing item has the
+    # same name (case-insensitive) within ~50m. This stops the search-and-save
+    # flow from creating duplicates that pollute views, rankings and the plan.
+    # We return 409 plus the existing item so the frontend can point the user
+    # at it instead of silently swallowing the action.
+    if lat is not None and lng is not None:
+        for existing in db.query(Item).all():
+            if not existing.title:
+                continue
+            same_name = existing.title.strip().lower() == name.lower()
+            dist = haversine_meters(lat, lng, existing.latitude, existing.longitude)
+            if same_name and dist is not None and dist <= 50:
+                result = item_to_dict(existing)
+                db.close()
+                return jsonify({
+                    "error": "Place already saved",
+                    "existing": result,
+                }), 409
+
     item = Item(
-        title=data["name"],
+        title=name,
         description=data.get("notes"),
         item_type=data.get("itemType", "map_pin"),
         category=data.get("category"),
-        latitude=data.get("lat"),
-        longitude=data.get("lng"),
+        latitude=lat,
+        longitude=lng,
         address=data.get("address"),
         tags=data.get("tags"),
     )

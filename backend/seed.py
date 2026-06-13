@@ -8,15 +8,12 @@ script any time you want to reset the database to its known good state:
     cd backend
     python seed.py
 """
+import sys
 from database import engine, Base, SessionLocal
 from models import Item
 import datetime
 
 Base.metadata.create_all(bind=engine)
-
-db = SessionLocal()
-db.query(Item).delete()
-db.commit()
 
 now = datetime.datetime.utcnow()
 
@@ -388,8 +385,36 @@ items = [
     ),
 ]
 
-db.add_all(items)
-db.commit()
-db.close()
+# Seeding policy
+# --------------
+# Default: only seed when the table is EMPTY. This is safe to run on every
+# deploy (it never touches saved places once the DB is populated), which is
+# exactly what the Render start command does now.
+#
+# --reset: wipe and reseed. Local use only, to restore the known-good 30-place
+# state. Never put --reset in the production start command.
+def main():
+    reset = "--reset" in sys.argv
+    db = SessionLocal()
+    try:
+        if reset:
+            db.query(Item).delete()
+            db.commit()
+            print("Reset: cleared all existing items.")
 
-print(f"Seeded {len(items)} items with rich descriptions.")
+        existing = db.query(Item).count()
+        if existing == 0:
+            db.add_all(items)
+            db.commit()
+            print(f"Seeded {len(items)} items with rich descriptions.")
+        else:
+            print(
+                f"Database already has {existing} items; skipping seed. "
+                f"Run 'python seed.py --reset' to force a reseed."
+            )
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()
