@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { MapPin, Clock, Compass, X, BookOpen } from 'lucide-react'
+import { formatDistance } from '../utils/formatDistance'
 
 /**
  * ExplanationBreakdown — surfaces the paper's four evaluation criteria
@@ -197,7 +198,7 @@ function computeSignals(item, userLoc, now) {
     dist < 2000           ? 'weak'   : 'none'
   const contextDetail =
     dist == null ? 'Location unknown'
-                 : `${Math.round(dist)} m away`
+                 : `${formatDistance(dist)} away`
 
   // ---- Signal 2: Document relevance (paper §4.4) ---------------------
   const hour = now.getHours()

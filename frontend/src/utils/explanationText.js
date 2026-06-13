@@ -1,4 +1,4 @@
-
+import { formatDistance } from './formatDistance'
 
 export function getFullDate(savedAt) {
   if (!savedAt) return ''
@@ -9,10 +9,12 @@ export function getFullDate(savedAt) {
 }
 
 
-function formatDistance(meters) {
-  if (!meters) return ''
-  if (meters < 1000) return `${meters}m away`
-  return `${(meters / 1000).toFixed(1)}km away`
+// List-row distance phrasing. Route the number through the shared formatter so
+// it reads the same as everywhere else ("240 m", "13,736 km"), then keep the
+// "away" suffix that the reason sentences are written around.
+function formatDistanceAway(meters) {
+  const d = formatDistance(meters)
+  return d ? `${d} away` : ''
 }
 
 function formatTimeAgo(savedAt) {
@@ -29,7 +31,7 @@ function formatTimeAgo(savedAt) {
 export function getExplanationText(item, explanation) {
   const { reason, distanceMeters } = explanation
   const { viewCount, savedAt } = item
-  const dist = formatDistance(distanceMeters)
+  const dist = formatDistanceAway(distanceMeters)
   const timeAgo = formatTimeAgo(savedAt)
 
   if (reason === 'nearby_and_recent_save') return `${dist} · saved ${timeAgo}`

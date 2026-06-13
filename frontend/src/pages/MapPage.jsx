@@ -16,6 +16,7 @@ import {
   ChevronDown, Check, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
+import { formatDistance } from '../utils/formatDistance'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
 import MethodCompare from '../components/MethodCompare'
 import TripItinerary from '../components/TripItinerary'
@@ -983,7 +984,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
           <div className="wb-detail-stats">
             <div className="wb-stat">
               <div className="wb-stat-label">Distance</div>
-              <div className="wb-stat-val">{distance < 1000 ? `${distance} m` : `${(distance/1000).toFixed(1)} km`}</div>
+              <div className="wb-stat-val">{formatDistance(distance)}</div>
             </div>
             <div className="wb-stat">
               <div className="wb-stat-label">Saved</div>
@@ -1105,6 +1106,12 @@ export default function MapPage() {
   const [mapSearchResults, setMapSearchResults] = useState([])
   const [mapSearchLoading, setMapSearchLoading] = useState(false)
 
+  // In-flight guard shared by every save path (pin-drop + both Photon paths).
+  // A save POST takes a moment; without this the Save control stays live and
+  // rapid taps fire duplicate POSTs (observed: 6x CinemaxX, 9x Pinakotheken).
+  // It disables the control and drives the pending label until the POST settles.
+  const [saving, setSaving] = useState(false)
+
   const [detailItemId, setDetailItemId] = useState(null)   // open detail panel for this item
   // Bug 8: which slice of items the detail panel's left/right arrows walk
   // through. Set at openDetail call time from whichever list the user tapped
@@ -1150,6 +1157,12 @@ export default function MapPage() {
     try { return new Set(JSON.parse(localStorage.getItem('wb_dismissed_alerts') || '[]')) }
     catch { return new Set() }
   })
+  // Banner cooldown. A dismissal is about the moment, not the item: it silences
+  // the whole banner channel until the moment passes. We stash { at, loc } here
+  // and the polling effect skips evaluation until 45 min elapse OR the user
+  // moves more than 500 m from where they dismissed. Session-scoped on purpose:
+  // a ref, never persisted, so a fresh load starts the channel open again.
+  const bannerCooldownRef = useRef(null)  // { at: Date, loc: { lat, lng } } | null
 
   const [toast, setToast] = useState(null)
   const [centerTrigger, setCenterTrigger] = useState(0)
@@ -1374,6 +1387,30 @@ export default function MapPage() {
   // Derived: the route data for the currently-selected travel mode.
   const routeData = routesByMode[travelMode] ?? null
 
+  // Derived: are we ranking around the Hauptbahnhof fallback rather than a real
+  // fix? True when live geolocation is off AND userLoc still sits at the demo
+  // default. Drives the quiet location-source notice atop the list.
+  const usingFallbackLoc =
+    !geoActive &&
+    userLoc.lat === DEFAULT_CENTER[0] &&
+    userLoc.lng === DEFAULT_CENTER[1]
+
+  // Annotate Photon features with their distance from userLoc and sort
+  // nearest-first, so both the Add flow and the search escape hatch render the
+  // same shape. Photon geometry is [lng, lat] (see pickPlaceResult). Features
+  // missing coordinates get a null distance and sort to the end.
+  function photonRowsByDistance(features) {
+    return (features || [])
+      .map(feature => {
+        const c = feature.geometry?.coordinates || []
+        const distM = (c[0] != null && c[1] != null)
+          ? haversineMeters(userLoc.lat, userLoc.lng, c[1], c[0])
+          : null
+        return { feature, distM }
+      })
+      .sort((a, b) => (a.distM ?? Infinity) - (b.distM ?? Infinity))
+  }
+
   // Proactive notification polling (W4 project brief requirement).
   // Calls the existing /recommendations endpoint with method=cia every 30s and
   // evaluates whether the top-ranked item satisfies the composite signal gate
@@ -1386,6 +1423,18 @@ export default function MapPage() {
 
     async function evaluate() {
       try {
+        const now = new Date()
+        // Banner cooldown gate. A dismissal silences the channel as a whole, so
+        // skip evaluation entirely until 45 min pass OR the user moves more than
+        // 500 m from where they dismissed. Either condition lifts the cooldown.
+        const cd = bannerCooldownRef.current
+        if (cd) {
+          const elapsedMs = now - cd.at
+          const movedM = haversineMeters(userLoc.lat, userLoc.lng, cd.loc.lat, cd.loc.lng)
+          if (elapsedMs < 45 * 60_000 && movedM <= 500) return
+          bannerCooldownRef.current = null
+        }
+
         const params = new URLSearchParams({
           userId: USER_ID,
           lat: userLoc.lat,
@@ -1399,7 +1448,6 @@ export default function MapPage() {
           return
         }
 
-        const now = new Date()
         // Walk the ranked list — first item that satisfies the composite gate
         // AND is not in the user's dismissed set wins the banner slot.
         for (const rec of data) {
@@ -1515,6 +1563,8 @@ export default function MapPage() {
   // ---- save / delete --------------------------------------------------------
   async function saveNewPlace() {
     if (!newPlace.name.trim()) { showToast('Add a name first'); return }
+    if (saving) return
+    setSaving(true)
     try {
       const res = await fetch(`${API}/saved-items`, {
         method: 'POST',
@@ -1534,6 +1584,7 @@ export default function MapPage() {
       showToast(`Saved · ${newPlace.name.trim()}`)
       changeMode('map')
     } catch { showToast('Save failed. Is the backend running?') }
+    finally { setSaving(false) }
   }
 
   // Photon result tap: save the place directly, no extra form step. Mirrors the
@@ -1548,6 +1599,8 @@ export default function MapPage() {
     // Second layer over the disabled row state, covering the race where the
     // pool changed after the results rendered.
     if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
+    if (saving) return
+    setSaving(true)
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
@@ -1567,6 +1620,7 @@ export default function MapPage() {
       showToast(`Saved · ${name}`)
       changeMode('map')
     } catch { showToast('Save failed. Is the backend running?') }
+    finally { setSaving(false) }
   }
 
   // Escape hatch: the saved-pool search found nothing, so run Photon once for
@@ -1597,6 +1651,8 @@ export default function MapPage() {
     // Second layer over the disabled row state, covering the race where the
     // pool changed after the results rendered.
     if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
+    if (saving) return
+    setSaving(true)
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
@@ -1618,6 +1674,7 @@ export default function MapPage() {
       setMapSearchResults([])
       setSearch('')
     } catch { showToast('Save failed. Is the backend running?') }
+    finally { setSaving(false) }
   }
 
   async function deleteItem(id) {
@@ -1696,8 +1753,13 @@ export default function MapPage() {
     })
   }
 
+  // Dismissal is about the moment, not the item. Opening the cooldown silences
+  // the whole banner channel (see the polling effect's 45 min / 500 m gate); the
+  // dismissed item still goes into dismissedAlerts as a second layer so it stays
+  // skipped even after the cooldown lifts.
   function dismissProactiveAlert() {
     if (!proactiveAlert) return
+    bannerCooldownRef.current = { at: new Date(), loc: userLoc }
     const id = proactiveAlert.item.id
     setDismissedAlerts(prev => {
       const next = new Set(prev)
@@ -2087,7 +2149,9 @@ export default function MapPage() {
         {/* ---- proactive notification (full-width map overlay, below the
                 weather + method tag + layers row). Anchored to the map, not
                 the sheet, so dragging the sheet doesn't move or hide it.
-                Slide-in animation kicks in on each new fired/forced banner. */}
+                Slide-in animation kicks in on each new fired/forced banner.
+                The X dismisses the moment, not the item: it opens a cooldown
+                that silences the whole channel (see dismissProactiveAlert). */}
         {mode === 'map' && proactiveAlert && (() => {
           const t = proactiveBannerText(
             proactiveAlert.item,
@@ -2349,6 +2413,19 @@ export default function MapPage() {
               boundary (avoids a flicker as the user dragged across). */}
           {(isDesktop || snapPx > SNAP_FLOOR + 40) && (
           <div className="wb-list">
+            {/* Location-source notice. In fallback mode the recommendations
+                rank around the station, which is easy to miss. Surface it
+                quietly and let a tap hand off to the same locate flow as the
+                FAB; it disappears the moment a real fix is active. */}
+            {mode === 'map' && usingFallbackLoc && (
+              <button
+                type="button"
+                className="wb-loc-fallback"
+                onClick={handleLocate}
+              >
+                Showing results near Hauptbahnhof. Tap to use your location
+              </button>
+            )}
             {list.length === 0 ? (
               (search.trim() || filter !== 'all' || activeType) ? (
                 <div className="wb-empty">
@@ -2365,11 +2442,14 @@ export default function MapPage() {
                         {!mapSearchLoading && mapSearchResults.length === 0 && (
                           <div className="wb-item-meta">No places found for “{search.trim()}”.</div>
                         )}
-                        {mapSearchResults.map((feature, i) => {
+                        {photonRowsByDistance(mapSearchResults).map(({ feature, distM }, i) => {
                           const p = feature.properties || {}
                           const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
                           const title = p.name || streetLine || 'Unnamed place'
-                          const secondary = [streetLine, p.city].filter(Boolean).join(', ')
+                          // Locality (city, falling back to state) + distance, so two
+                          // same-named places far apart are easy to tell apart.
+                          const place = [streetLine, p.city || p.state].filter(Boolean).join(', ')
+                          const secondary = [place, formatDistance(distM)].filter(Boolean).join(' · ')
                           const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
                           const saved = featureMatchesSaved(feature, savedItems)
                           return (
@@ -2394,6 +2474,7 @@ export default function MapPage() {
                                   type="button"
                                   className="wb-map-search-save"
                                   onClick={() => saveMapResult(feature)}
+                                  disabled={saving}
                                   aria-label={`Save ${title}`}
                                 >
                                   <Plus size={16} /> Save
@@ -2422,7 +2503,7 @@ export default function MapPage() {
                   Nothing here yet. Tap <strong style={{ color: 'var(--accent)' }}>Add</strong> to save your first place.
                 </div>
               )
-            ) : list.map(({ item, score, explanation }) => {
+            ) : list.map(({ item, explanation }) => {
               const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
               const ItemIcon = cat.Icon
               const reasonText = explanation?.reason ? getExplanationText(item, explanation) : null
@@ -2445,9 +2526,11 @@ export default function MapPage() {
                       <div className="wb-item-reason"><MapPin size={13} /> {reasonText}</div>
                     )}
                   </div>
-                  {mode === 'map' ? (
-                    <div className="wb-item-score">{score != null ? Math.round(score * 100) : ''}</div>
-                  ) : (
+                  {/* No raw score on Map rows: it was not the active ranker's
+                      number and contradicted the sort order. Rank position,
+                      distance, and saved-time carry the row; the full
+                      explanation lives in the detail panel. */}
+                  {mode !== 'map' && (
                     <button className="wb-item-delete" aria-label={`Delete ${item.name}`}
                       onClick={(e) => { e.stopPropagation(); deleteItem(item.id) }}>
                       <Trash2 size={18} />
@@ -2507,11 +2590,14 @@ export default function MapPage() {
               {!placeSearching && placeResults.length === 0 && (
                 <div className="wb-item-meta">No matches</div>
               )}
-              {placeResults.map((feature, i) => {
+              {photonRowsByDistance(placeResults).map(({ feature, distM }, i) => {
                 const p = feature.properties || {}
                 const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
                 const title = p.name || streetLine || 'Unnamed place'
-                const secondary = [streetLine, p.city].filter(Boolean).join(', ')
+                // Locality (city, falling back to state) + distance, so two
+                // same-named places far apart are easy to tell apart.
+                const place = [streetLine, p.city || p.state].filter(Boolean).join(', ')
+                const secondary = [place, formatDistance(distM)].filter(Boolean).join(' · ')
                 const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
                 const saved = featureMatchesSaved(feature, savedItems)
                 return (
@@ -2519,7 +2605,7 @@ export default function MapPage() {
                     key={i}
                     className="wb-item"
                     data-saved={saved ? 'true' : undefined}
-                    onClick={saved ? undefined : () => pickPlaceResult(feature)}
+                    onClick={saved || saving ? undefined : () => pickPlaceResult(feature)}
                   >
                     <div className="wb-item-main">
                       <div className="wb-item-name-row">
@@ -2571,7 +2657,9 @@ export default function MapPage() {
               )
             })}
           </div>
-          <button className="wb-save-btn" onClick={saveNewPlace}>Save</button>
+          <button className="wb-save-btn" onClick={saveNewPlace} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
 
         {/* ---- bottom nav (shared with TripPage) --------------------------- */}

@@ -434,6 +434,18 @@ body { font-family: var(--font-body); }
 .wb-empty em { color: var(--ink); font-style: normal; }
 .wb-empty-hint { margin-top: 6px; font-size: 12px; opacity: 0.75; }
 
+/* Location-source notice: a quiet, tappable line atop the list, shown only
+   when ranking falls back to the Hauptbahnhof default instead of a real fix.
+   Tapping hands off to the locate flow; hover hints with the pin accent. */
+.wb-loc-fallback {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none;
+  border-bottom: 1px solid var(--rule);
+  padding: 10px 4px; margin-bottom: 6px;
+  font-size: 12px; color: var(--ink-soft); cursor: pointer;
+}
+.wb-loc-fallback:hover { color: var(--pin); }
+
 /* Saved-search escape hatch: when the saved pool has no match for a query,
    offer a one-tap map (Photon) search. Quiet, token-only, both layouts. */
 .wb-empty-escape {
@@ -458,6 +470,9 @@ body { font-family: var(--font-body); }
   font-size: 12px; font-weight: 500; color: var(--ink); cursor: pointer;
 }
 .wb-map-search-save:hover { color: var(--pin); border-color: var(--pin); }
+/* Inert while another save is in flight (single in-flight guard disables all). */
+.wb-map-search-save:disabled { opacity: 0.5; cursor: not-allowed; }
+.wb-map-search-save:disabled:hover { color: var(--ink); border-color: var(--rule); }
 /* Already-saved state for a Photon result row: same pill footprint as the Save
    button, but muted and inert so a duplicate cannot be saved a second time. */
 .wb-result-saved {
@@ -512,7 +527,6 @@ body { font-family: var(--font-body); }
   font-size: 11px; color: var(--pin); margin-top: 4px;
   display: flex; align-items: center; gap: 4px;
 }
-.wb-item-score { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); align-self: center; font-weight: 500; }
 .wb-item-delete {
   background: transparent; border: none; cursor: pointer;
   padding: 8px; align-self: center; display: flex; border-radius: 50%;
@@ -615,6 +629,10 @@ body { font-family: var(--font-body); }
   cursor: pointer; margin-top: 4px;
 }
 .wb-save-btn:hover { background: color-mix(in oklch, var(--pin) 90%, black); }
+/* Pending state while a save POST is in flight: inert and dimmed, with the
+   base fill kept so the "Saving..." label stays legible. */
+.wb-save-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.wb-save-btn:disabled:hover { background: var(--pin); }
 
 /* ===== phase 3 ============================================== */
 
