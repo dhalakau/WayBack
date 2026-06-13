@@ -1150,6 +1150,12 @@ export default function MapPage() {
     try { return new Set(JSON.parse(localStorage.getItem('wb_dismissed_alerts') || '[]')) }
     catch { return new Set() }
   })
+  // Banner cooldown. A dismissal is about the moment, not the item: it silences
+  // the whole banner channel until the moment passes. We stash { at, loc } here
+  // and the polling effect skips evaluation until 45 min elapse OR the user
+  // moves more than 500 m from where they dismissed. Session-scoped on purpose:
+  // a ref, never persisted, so a fresh load starts the channel open again.
+  const bannerCooldownRef = useRef(null)  // { at: Date, loc: { lat, lng } } | null
 
   const [toast, setToast] = useState(null)
   const [centerTrigger, setCenterTrigger] = useState(0)
@@ -1386,6 +1392,18 @@ export default function MapPage() {
 
     async function evaluate() {
       try {
+        const now = new Date()
+        // Banner cooldown gate. A dismissal silences the channel as a whole, so
+        // skip evaluation entirely until 45 min pass OR the user moves more than
+        // 500 m from where they dismissed. Either condition lifts the cooldown.
+        const cd = bannerCooldownRef.current
+        if (cd) {
+          const elapsedMs = now - cd.at
+          const movedM = haversineMeters(userLoc.lat, userLoc.lng, cd.loc.lat, cd.loc.lng)
+          if (elapsedMs < 45 * 60_000 && movedM <= 500) return
+          bannerCooldownRef.current = null
+        }
+
         const params = new URLSearchParams({
           userId: USER_ID,
           lat: userLoc.lat,
@@ -1399,7 +1417,6 @@ export default function MapPage() {
           return
         }
 
-        const now = new Date()
         // Walk the ranked list — first item that satisfies the composite gate
         // AND is not in the user's dismissed set wins the banner slot.
         for (const rec of data) {
@@ -1696,8 +1713,13 @@ export default function MapPage() {
     })
   }
 
+  // Dismissal is about the moment, not the item. Opening the cooldown silences
+  // the whole banner channel (see the polling effect's 45 min / 500 m gate); the
+  // dismissed item still goes into dismissedAlerts as a second layer so it stays
+  // skipped even after the cooldown lifts.
   function dismissProactiveAlert() {
     if (!proactiveAlert) return
+    bannerCooldownRef.current = { at: new Date(), loc: userLoc }
     const id = proactiveAlert.item.id
     setDismissedAlerts(prev => {
       const next = new Set(prev)
@@ -2087,7 +2109,9 @@ export default function MapPage() {
         {/* ---- proactive notification (full-width map overlay, below the
                 weather + method tag + layers row). Anchored to the map, not
                 the sheet, so dragging the sheet doesn't move or hide it.
-                Slide-in animation kicks in on each new fired/forced banner. */}
+                Slide-in animation kicks in on each new fired/forced banner.
+                The X dismisses the moment, not the item: it opens a cooldown
+                that silences the whole channel (see dismissProactiveAlert). */}
         {mode === 'map' && proactiveAlert && (() => {
           const t = proactiveBannerText(
             proactiveAlert.item,
