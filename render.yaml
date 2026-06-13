@@ -17,7 +17,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.12.7
       - key: CORS_ORIGINS
-        value: http://localhost:5173,http://localhost:3000
+        value: https://wayback-one.vercel.app,http://localhost:5173,http://localhost:3000
       # Managed Postgres connection string (e.g. from Neon). Marked sync:false
       # so it is set in the Render dashboard, not committed to the repo.
       # Without it the app falls back to ephemeral SQLite and data is lost on
