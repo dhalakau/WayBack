@@ -151,7 +151,7 @@ def get_saved_items():
 
 
 # ---------------------------------------------------------------------------
-# GET /saved-items/:id  — single item; bumps lastViewedAt + viewCount
+# GET /saved-items/:id  — single item (pure read, no side effects)
 # ---------------------------------------------------------------------------
 
 @app.route("/saved-items/<int:item_id>", methods=["GET"])
@@ -162,11 +162,46 @@ def get_saved_item(item_id):
         db.close()
         return jsonify({"error": "Item not found"}), 404
 
-    # Side effect: record this view (feeds CIA ranking model)
-    item.last_viewed_at = now_utc()
-    item.view_count = (item.view_count or 0) + 1
-    db.commit()
-    db.refresh(item)
+    # Pure read: fetching an item must not mutate it. View tracking now lives
+    # in POST /items/:id/view so an incidental GET (list refresh, polling)
+    # never inflates the CIA ranking signal.
+    result = item_to_dict(item)
+    db.close()
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
+# POST /items/:id/view  — record a deliberate view
+# ---------------------------------------------------------------------------
+# Path is /items/:id/view (not /saved-items/...) to match the frontend, which
+# already calls POST /items/:id/view from MapPage.
+
+# Reopening the same place repeatedly within a single session shouldn't inflate
+# its view_count, so we debounce: only count a view if the last one was long
+# enough ago (or there's never been one).
+VIEW_DEBOUNCE = datetime.timedelta(minutes=10)
+
+
+@app.route("/items/<int:item_id>/view", methods=["POST"])
+def record_view(item_id):
+    db = SessionLocal()
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        db.close()
+        return jsonify({"error": "Item not found"}), 404
+
+    now = now_utc()
+    last = item.last_viewed_at
+    # last_viewed_at is stored naive (UTC) by SQLite; normalise before comparing.
+    if last is not None and last.tzinfo is None:
+        last = last.replace(tzinfo=datetime.timezone.utc)
+
+    if last is None or (now - last) > VIEW_DEBOUNCE:
+        item.last_viewed_at = now
+        item.view_count = (item.view_count or 0) + 1
+        db.commit()
+        db.refresh(item)
+
     result = item_to_dict(item)
     db.close()
     return jsonify(result)
