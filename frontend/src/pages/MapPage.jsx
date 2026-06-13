@@ -2487,7 +2487,7 @@ export default function MapPage() {
                   Nothing here yet. Tap <strong style={{ color: 'var(--accent)' }}>Add</strong> to save your first place.
                 </div>
               )
-            ) : list.map(({ item, score, explanation }) => {
+            ) : list.map(({ item, explanation }) => {
               const cat = CATEGORIES[item.category] || { label: item.category, Icon: MapPin, color: '#a0e6d4' }
               const ItemIcon = cat.Icon
               const reasonText = explanation?.reason ? getExplanationText(item, explanation) : null
@@ -2510,9 +2510,11 @@ export default function MapPage() {
                       <div className="wb-item-reason"><MapPin size={13} /> {reasonText}</div>
                     )}
                   </div>
-                  {mode === 'map' ? (
-                    <div className="wb-item-score">{score != null ? Math.round(score * 100) : ''}</div>
-                  ) : (
+                  {/* No raw score on Map rows: it was not the active ranker's
+                      number and contradicted the sort order. Rank position,
+                      distance, and saved-time carry the row; the full
+                      explanation lives in the detail panel. */}
+                  {mode !== 'map' && (
                     <button className="wb-item-delete" aria-label={`Delete ${item.name}`}
                       onClick={(e) => { e.stopPropagation(); deleteItem(item.id) }}>
                       <Trash2 size={18} />

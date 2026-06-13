@@ -524,7 +524,6 @@ body { font-family: var(--font-body); }
   font-size: 11px; color: var(--pin); margin-top: 4px;
   display: flex; align-items: center; gap: 4px;
 }
-.wb-item-score { font-family: var(--font-mono); font-size: 12px; color: var(--ink-soft); align-self: center; font-weight: 500; }
 .wb-item-delete {
   background: transparent; border: none; cursor: pointer;
   padding: 8px; align-self: center; display: flex; border-radius: 50%;
