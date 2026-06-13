@@ -16,6 +16,7 @@ import {
   ChevronDown, Check, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
+import { formatDistance } from '../utils/formatDistance'
 import ExplanationBreakdown from '../components/ExplanationBreakdown'
 import MethodCompare from '../components/MethodCompare'
 import TripItinerary from '../components/TripItinerary'
@@ -1388,6 +1389,22 @@ export default function MapPage() {
     userLoc.lat === DEFAULT_CENTER[0] &&
     userLoc.lng === DEFAULT_CENTER[1]
 
+  // Annotate Photon features with their distance from userLoc and sort
+  // nearest-first, so both the Add flow and the search escape hatch render the
+  // same shape. Photon geometry is [lng, lat] (see pickPlaceResult). Features
+  // missing coordinates get a null distance and sort to the end.
+  function photonRowsByDistance(features) {
+    return (features || [])
+      .map(feature => {
+        const c = feature.geometry?.coordinates || []
+        const distM = (c[0] != null && c[1] != null)
+          ? haversineMeters(userLoc.lat, userLoc.lng, c[1], c[0])
+          : null
+        return { feature, distM }
+      })
+      .sort((a, b) => (a.distM ?? Infinity) - (b.distM ?? Infinity))
+  }
+
   // Proactive notification polling (W4 project brief requirement).
   // Calls the existing /recommendations endpoint with method=cia every 30s and
   // evaluates whether the top-ranked item satisfies the composite signal gate
@@ -2410,11 +2427,14 @@ export default function MapPage() {
                         {!mapSearchLoading && mapSearchResults.length === 0 && (
                           <div className="wb-item-meta">No places found for “{search.trim()}”.</div>
                         )}
-                        {mapSearchResults.map((feature, i) => {
+                        {photonRowsByDistance(mapSearchResults).map(({ feature, distM }, i) => {
                           const p = feature.properties || {}
                           const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
                           const title = p.name || streetLine || 'Unnamed place'
-                          const secondary = [streetLine, p.city].filter(Boolean).join(', ')
+                          // Locality (city, falling back to state) + distance, so two
+                          // same-named places far apart are easy to tell apart.
+                          const place = [streetLine, p.city || p.state].filter(Boolean).join(', ')
+                          const secondary = [place, formatDistance(distM)].filter(Boolean).join(' · ')
                           const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
                           const saved = featureMatchesSaved(feature, savedItems)
                           return (
@@ -2552,11 +2572,14 @@ export default function MapPage() {
               {!placeSearching && placeResults.length === 0 && (
                 <div className="wb-item-meta">No matches</div>
               )}
-              {placeResults.map((feature, i) => {
+              {photonRowsByDistance(placeResults).map(({ feature, distM }, i) => {
                 const p = feature.properties || {}
                 const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
                 const title = p.name || streetLine || 'Unnamed place'
-                const secondary = [streetLine, p.city].filter(Boolean).join(', ')
+                // Locality (city, falling back to state) + distance, so two
+                // same-named places far apart are easy to tell apart.
+                const place = [streetLine, p.city || p.state].filter(Boolean).join(', ')
+                const secondary = [place, formatDistance(distM)].filter(Boolean).join(' · ')
                 const catLabel = CATEGORIES[osmToCategory(p.osm_key, p.osm_value)]?.label
                 const saved = featureMatchesSaved(feature, savedItems)
                 return (
