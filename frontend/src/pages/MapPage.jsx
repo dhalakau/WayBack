@@ -984,7 +984,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
           <div className="wb-detail-stats">
             <div className="wb-stat">
               <div className="wb-stat-label">Distance</div>
-              <div className="wb-stat-val">{distance < 1000 ? `${distance} m` : `${(distance/1000).toFixed(1)} km`}</div>
+              <div className="wb-stat-val">{formatDistance(distance)}</div>
             </div>
             <div className="wb-stat">
               <div className="wb-stat-label">Saved</div>
