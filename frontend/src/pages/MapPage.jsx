@@ -32,11 +32,10 @@ import ThemeToggle from '../components/ThemeToggle'
 const API = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000'
 const USER_ID = 'user_demo'
 
-// Editing a saved place's notes requires PATCH /saved-items/:id, which the
-// backend does not expose yet (contract sent to Sway). The DetailPanel editor
-// below is built against that contract but stays disabled until the route
-// ships; flip this to true then. While false we never write notes to local
-// state, so nothing fakes persistence.
+// Notes editing via PATCH /saved-items/:id, live since Sway shipped the
+// endpoint. The DetailPanel editor reflects the server's returned item on
+// success and never writes notes to local state on failure, so nothing fakes
+// persistence. Set to false to hide the editor if the route ever regresses.
 const NOTES_EDIT_ENABLED = true
 const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible demo location
 const DEFAULT_ZOOM = 15
