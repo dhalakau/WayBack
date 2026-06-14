@@ -278,6 +278,36 @@ def delete_saved_item(item_id):
 
 
 # ---------------------------------------------------------------------------
+# PATCH /saved-items/:id  — update a saved item's notes
+# ---------------------------------------------------------------------------
+# Notes are persisted in Item.description (see item_to_dict / create). Only the
+# notes field is editable here; the body may carry an empty string to clear it,
+# and any unknown fields are ignored rather than rejected so the frontend can
+# evolve its payload without a contract bump.
+
+@app.route("/saved-items/<int:item_id>", methods=["PATCH"])
+def update_saved_item(item_id):
+    data = request.json or {}
+
+    db = SessionLocal()
+    item = db.query(Item).filter(Item.id == item_id).first()
+    if not item:
+        db.close()
+        return jsonify({"error": "Item not found"}), 404
+
+    # Only touch description when notes is actually supplied. An empty string is
+    # a valid value (clears the note); omitting the key leaves notes untouched.
+    if "notes" in data:
+        item.description = data["notes"] or ""
+        db.commit()
+        db.refresh(item)
+
+    result = item_to_dict(item)
+    db.close()
+    return jsonify(result)
+
+
+# ---------------------------------------------------------------------------
 # GET /recommendations  — context-ranked saved items
 # ---------------------------------------------------------------------------
 

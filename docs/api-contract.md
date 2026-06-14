@@ -104,6 +104,27 @@ See: `mocks/saved-item-detail.json`
 
 ---
 
+### `PATCH /saved-items/:id`
+
+Update a saved item's notes. Used by the detail panel's edit-notes UI.
+
+**Query params:**
+| Param | Type | Required | Description |
+|---|---|---|---|
+| `userId` | string | yes | |
+
+**Request body:**
+```json
+{ "notes": "Glockenspiel plays at 11am and noon." }
+```
+
+`notes` may be an empty string (clears the note). Unknown fields are ignored, not rejected. Omitting `notes` is a no-op.
+
+**Response 200:** `SavedItem` — the full updated item, same shape as `GET /saved-items/:id`, so the client can replace its copy.
+**Response 404:** `{ "error": "Item not found" }`
+
+---
+
 ### `GET /recommendations`
 
 Context-ranked list of saved items. Core endpoint for the Re-finding feed.
