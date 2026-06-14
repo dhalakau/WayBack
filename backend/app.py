@@ -67,9 +67,15 @@ def months_since(dt):
     return round((now_utc() - dt).days / 30.44, 1)
 
 
-def time_of_day_query():
-    """Fallback query for JITIR when no text context is provided."""
-    hour = datetime.datetime.now().hour
+def time_of_day_query(now):
+    """Fallback query for JITIR when no text context is provided.
+
+    Takes the same `now` the rankers use (UTC) rather than reading server-local
+    time, so the meal bucket here can't disagree with CIA near a boundary. Note
+    this means the bucket is UTC-based; a tz-aware "user's local clock" version
+    (frontend sends local now/tz, threaded through both rankers) is future work.
+    """
+    hour = now.hour
     if 5 <= hour < 11:  return "breakfast cafe morning coffee"
     if 11 <= hour < 14: return "lunch food market restaurant"
     if 14 <= hour < 18: return "museum culture sightseeing attractions"
@@ -332,12 +338,13 @@ def recommendations():
     items = db.query(Item).all()
     db.close()
 
+    now = now_utc()
     context = {
         "lat":              lat,
         "lon":              lng,   # recommenders use 'lon' internally
-        "now":              now_utc(),
+        "now":              now,
         "current_category": category,
-        "current_text":     text or time_of_day_query(),
+        "current_text":     text or time_of_day_query(now),
         "weather":          weather,
     }
 

@@ -48,7 +48,7 @@ It directly answers the open questions in `docs/frontend-spec.pdf` Section 5.
 **Field notes:**
 - `category`: one of `cafe` | `restaurant` | `museum` | `attraction` | `park` | `bar` | `accommodation` | `shopping` | `services` | `transport`
 - `savedAt`, `lastViewedAt`: unix milliseconds
-- `viewCount`: integer, increments on every `GET /saved-items/:id`
+- `viewCount`: integer, increments on `POST /items/:id/view` (a deliberate view), not on `GET`
 - `attachments[].type`: `photo` | `ticket` | `document`
 
 ### `Explanation`
@@ -90,7 +90,7 @@ See: `mocks/saved-items.json`
 
 ### `GET /saved-items/:id`
 
-A single saved item with full details. **Side effect:** sets `lastViewedAt` to server time and increments `viewCount`. This interaction signal feeds the CIA model's access-pattern features.
+A single saved item with full details. **Pure read — no side effects.** View tracking (`lastViewedAt` / `viewCount`) lives in `POST /items/:id/view` so an incidental GET (list refresh, polling) never inflates the CIA model's access-pattern signal.
 
 **Query params:**
 | Param | Type | Required | Description |
@@ -101,6 +101,17 @@ A single saved item with full details. **Side effect:** sets `lastViewedAt` to s
 **Response 404:** `{ "error": "Item not found" }`
 
 See: `mocks/saved-item-detail.json`
+
+---
+
+### `POST /items/:id/view`
+
+Records a deliberate view of a saved item. This is the interaction signal that feeds the CIA model's access-pattern features.
+
+**Debounced:** increments `viewCount` and updates `lastViewedAt` only if the last view was more than 10 minutes ago (or there was none). Repeat opens within the 10-minute window are no-ops.
+
+**Response 200:** `SavedItem` — the full updated item, same shape as `GET /saved-items/:id`.
+**Response 404:** `{ "error": "Item not found" }`
 
 ---
 
