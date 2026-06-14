@@ -2661,6 +2661,17 @@ export default function MapPage() {
               )
             })}
           </div>
+          {/* Personal cue captured at save time. Re-finding (paper §3) leans on
+              this note, so it must be collected here, not just shown read-only
+              later. Bound to newPlace.notes, which the create POST already sends. */}
+          <div className="wb-cat-label">NOTE</div>
+          <textarea
+            className="wb-textarea"
+            placeholder="What do you want to remember this place as? (optional)"
+            value={newPlace.notes}
+            onChange={e => setNewPlace({ ...newPlace, notes: e.target.value })}
+            rows={3}
+          />
           <button className="wb-save-btn" onClick={saveNewPlace} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </button>

@@ -592,11 +592,19 @@ body { font-family: var(--font-body); }
   color: var(--ink); outline: none;
 }
 .wb-input::placeholder { color: var(--ink-soft); }
+.wb-textarea {
+  background: var(--paper-soft); border: 0.5px solid var(--rule);
+  border-radius: 12px; padding: 12px; font-size: 14px;
+  color: var(--ink); outline: none;
+  font-family: inherit; resize: vertical; min-height: 76px;
+}
+.wb-textarea::placeholder { color: var(--ink-soft); }
 /* iOS Safari auto-zooms any focused input whose font-size is under 16px and
    never zooms back. Mobile inputs are bumped to 16px to remove the trigger;
    desktop (>=900px) keeps its smaller 14px since it never auto-zooms. */
 @media (max-width: 899.98px) {
   .wb-search-input,
+  .wb-textarea,
   .wb-input { font-size: 16px; }
 }
 .wb-cat-label {
