@@ -37,7 +37,7 @@ const USER_ID = 'user_demo'
 // below is built against that contract but stays disabled until the route
 // ships; flip this to true then. While false we never write notes to local
 // state, so nothing fakes persistence.
-const NOTES_EDIT_ENABLED = false
+const NOTES_EDIT_ENABLED = true
 const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible demo location
 const DEFAULT_ZOOM = 15
 
