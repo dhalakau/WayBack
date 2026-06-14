@@ -12,7 +12,7 @@ import {
   Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
   Footprints, Bike, Car, ArrowLeft,
   Map as MapIcon, ChevronLeft, ChevronRight,
-  Ticket, StickyNote, Tags,
+  Ticket, StickyNote, Tags, Pencil,
   ChevronDown, Check, ThumbsUp, ThumbsDown,
 } from 'lucide-react'
 import { getExplanationText } from '../utils/explanationText'
@@ -31,6 +31,13 @@ import ThemeToggle from '../components/ThemeToggle'
 
 const API = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000'
 const USER_ID = 'user_demo'
+
+// Editing a saved place's notes requires PATCH /saved-items/:id, which the
+// backend does not expose yet (contract sent to Sway). The DetailPanel editor
+// below is built against that contract but stays disabled until the route
+// ships; flip this to true then. While false we never write notes to local
+// state, so nothing fakes persistence.
+const NOTES_EDIT_ENABLED = false
 const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible demo location
 const DEFAULT_ZOOM = 15
 
@@ -847,11 +854,72 @@ function SwipeableRow({ onTap, onDismiss, children }) {
 }
 
 // -----------------------------------------------------------------------------
+// NotesEditor — post-save description editing inside the detail panel.
+// Kept as its own component so a key={item.id} at the call site remounts it on
+// navigation, resetting the draft without an effect. Editing is gated by
+// `enabled` (NOTES_EDIT_ENABLED): while off, the control is visibly disabled
+// and nothing is written locally, so we never fake persistence ahead of the
+// backend PATCH /saved-items/:id route.
+// -----------------------------------------------------------------------------
+
+function NotesEditor({ item, enabled, onUpdateNotes }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(item.notes || '')
+  const [saving, setSaving] = useState(false)
+
+  async function save() {
+    setSaving(true)
+    const ok = await onUpdateNotes?.(item.id, draft)
+    setSaving(false)
+    if (ok) setEditing(false)
+  }
+
+  if (editing) {
+    return (
+      <div className="wb-notes-edit">
+        <textarea
+          className="wb-textarea"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          placeholder="What do you want to remember this place as?"
+          rows={3}
+          autoFocus
+        />
+        <div className="wb-notes-edit-actions">
+          <button className="wb-save-btn wb-notes-save" onClick={save} disabled={saving}>
+            {saving ? 'Saving...' : 'Save note'}
+          </button>
+          <button className="wb-notes-cancel" onClick={() => setEditing(false)} disabled={saving}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="wb-notes-view">
+      <p className="wb-detail-desc">{item.notes || 'No description yet.'}</p>
+      <button
+        className="wb-notes-edit-btn"
+        onClick={() => { setDraft(item.notes || ''); setEditing(true) }}
+        disabled={!enabled}
+      >
+        <Pencil size={14} /> {item.notes ? 'Edit note' : 'Add a note'}
+      </button>
+      {!enabled && (
+        <span className="wb-notes-pending">Editing notes will be available once the sync ships.</span>
+      )}
+    </div>
+  )
+}
+
+// -----------------------------------------------------------------------------
 // DetailPanel — the "flipbook" view. Tapping a place opens this overlay.
 // Swipe left/right (or use the chevrons) to flip between saved places.
 // -----------------------------------------------------------------------------
 
-function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc, feedbackDone, onFeedback, beside }) {
+function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelete, onSwitch, userLoc, feedbackDone, onFeedback, beside, onUpdateNotes }) {
   const idx = items.findIndex(i => i.id === itemId)
   const item = items[idx]
   const [tx, setTx] = useState(0)
@@ -961,7 +1029,10 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
           {item.itemType === 'ticket' && (
             <TicketCountdown eventDatetime={item.eventDatetime} />
           )}
-          <p className="wb-detail-desc">{item.notes || 'No description yet. Be the first to add one.'}</p>
+          {/* Notes / personal cue. Editable after saving via PATCH /saved-items/:id
+              (parent onUpdateNotes). key={item.id} remounts the editor on
+              navigation so a half-typed draft never leaks across places. */}
+          <NotesEditor key={item.id} item={item} enabled={NOTES_EDIT_ENABLED} onUpdateNotes={onUpdateNotes} />
 
           {/* Paper §3: tags surface user-chosen labels (e.g. "rooftop", "rainy day")
               in the detail panel. Backend may return tags as a comma-separated
@@ -1690,6 +1761,29 @@ export default function MapPage() {
     } catch {
       showToast('Delete failed. Restoring.')
       fetchSaved()
+    }
+  }
+
+  // Persist an edited note. PATCH /saved-items/:id is not live yet (contract
+  // sent to Sway); NOTES_EDIT_ENABLED gates the UI so this stays dormant until
+  // it ships. On success we replace the local item with the server's returned
+  // copy, never a local guess, so persistence is real and not faked. Returns
+  // true only when the write actually landed so the editor closes only then.
+  async function updateNotes(id, notes) {
+    try {
+      const res = await fetch(`${API}/saved-items/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const updated = await res.json()
+      setSavedItems(prev => prev.map(it => (it.id === id ? { ...it, ...updated } : it)))
+      showToast('Note saved')
+      return true
+    } catch {
+      showToast('Could not save note')
+      return false
     }
   }
 
@@ -2705,6 +2799,7 @@ export default function MapPage() {
               onNavigate={(item) => { setNavTarget(item); setDetailItemId(null); setDetailContext(null); showToast(`Directions to ${item.name}`) }}
               onDelete={(id) => { deleteItem(id); setDetailItemId(null); setDetailContext(null) }}
               onSwitch={(id) => openDetail(id)}
+              onUpdateNotes={updateNotes}
             />
           )
         })()}
