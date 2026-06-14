@@ -64,7 +64,10 @@ const SORT_LABEL = { recent: 'Recent', views: 'Most viewed', abc: 'A–Z', dista
 // categories so an imported place is filed the same way a manual pin would be.
 // Falls back to 'attraction' for anything we do not explicitly recognize.
 function osmToCategory(key, value) {
-  if (key === 'shop') return 'shopping'
+  if (key === 'shop') {
+    if (value === 'bakery' || value === 'pastry' || value === 'confectionery' || value === 'deli' || value === 'chocolate') return 'cafe'
+    return 'shopping'
+  }
   if (key === 'tourism') {
     if (value === 'museum' || value === 'gallery') return 'museum'
     if (value === 'hotel' || value === 'hostel' || value === 'guest_house' || value === 'motel') return 'accommodation'
@@ -82,7 +85,8 @@ function osmToCategory(key, value) {
     if (value === 'restaurant' || value === 'fast_food' || value === 'food_court') return 'restaurant'
     if (value === 'bar' || value === 'pub' || value === 'biergarten' || value === 'nightclub') return 'bar'
     if (value === 'bus_station' || value === 'taxi') return 'transport'
-    if (value === 'museum' || value === 'arts_centre' || value === 'theatre' || value === 'cinema') return 'museum'
+    if (value === 'museum' || value === 'arts_centre') return 'museum'
+    if (value === 'cinema' || value === 'theatre') return 'attraction'
     if (value === 'bank' || value === 'pharmacy' || value === 'hospital' || value === 'post_office' || value === 'clinic') return 'services'
     return 'attraction'
   }
