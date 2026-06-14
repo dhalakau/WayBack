@@ -30,9 +30,9 @@ It directly answers the open questions in `docs/frontend-spec.pdf` Section 5.
 
 ```json
 {
-  "id": "itm_001",
+  "id": 1,
   "name": "Marienplatz",
-  "category": "culture",
+  "category": "attraction",
   "lat": 48.1374,
   "lng": 11.5755,
   "savedAt": 1729382400000,
@@ -46,7 +46,7 @@ It directly answers the open questions in `docs/frontend-spec.pdf` Section 5.
 ```
 
 **Field notes:**
-- `category`: one of `outdoor` | `indoor` | `food` | `culture` | `shopping` | `transit`
+- `category`: one of `cafe` | `restaurant` | `museum` | `attraction` | `park` | `bar` | `accommodation` | `shopping` | `services` | `transport`
 - `savedAt`, `lastViewedAt`: unix milliseconds
 - `viewCount`: integer, increments on every `GET /saved-items/:id`
 - `attachments[].type`: `photo` | `ticket` | `document`
@@ -116,7 +116,7 @@ Context-ranked list of saved items. Core endpoint for the Re-finding feed.
 | `lng` | number | yes | Current longitude |
 | `time` | number | no | Unix ms; defaults to server now |
 | `weather` | string | no | `rain` \| `sun` \| `snow` \| `cloud` |
-| `method` | string | no | `CBR` \| `JITIR` \| `CIA`. Default: `CIA` |
+| `method` | string | no | `cbr` \| `jitir` \| `cia`. Default: `cia` |
 
 **Response 200:** Array of:
 ```json
@@ -141,7 +141,7 @@ Records user feedback on a recommendation. Used for evaluation (paper Section 7)
 ```json
 {
   "userId": "user_demo",
-  "itemId": "itm_001",
+  "itemId": 1,
   "useful": true,
   "method": "CIA",
   "contextSnapshot": {
