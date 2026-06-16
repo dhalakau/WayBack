@@ -1166,7 +1166,7 @@ export default function MapPage() {
   const [recommendations, setRecommendations] = useState([])
   const [userLoc, setUserLoc] = useState({ lat: DEFAULT_CENTER[0], lng: DEFAULT_CENTER[1] })
   const [newPin, setNewPin] = useState(null)           // { lat, lng } while in add mode
-  const [newPlace, setNewPlace] = useState({ name: '', category: '', notes: '' })
+  const [newPlace, setNewPlace] = useState({ name: '', category: '', notes: '', address: '', itemType: '' })
   const [placeQuery, setPlaceQuery] = useState('')     // Photon search box text
   const [placeResults, setPlaceResults] = useState([]) // Photon GeoJSON features
   const [placeSearching, setPlaceSearching] = useState(false)
@@ -1609,7 +1609,7 @@ export default function MapPage() {
     if (next === mode) return
     if (next === 'add') {
       setNewPin({ lat: userLoc.lat, lng: userLoc.lng })
-      setNewPlace({ name: '', category: '', notes: '' })
+      setNewPlace({ name: '', category: '', notes: '', address: '', itemType: '' })
       setPlaceQuery('')
       setPlaceResults([])
     } else {
@@ -1640,18 +1640,22 @@ export default function MapPage() {
     if (saving) return
     setSaving(true)
     try {
+      const body = {
+        userId: USER_ID,
+        name: newPlace.name.trim(),
+        category: newPlace.category || 'attraction',
+        notes: newPlace.notes,
+        lat: newPin.lat,
+        lng: newPin.lng,
+        address: newPlace.address || '',
+      }
+      // Photon-sourced picks carry an itemType; pin-drop saves omit it so the
+      // backend default applies, matching the previous behavior.
+      if (newPlace.itemType) body.itemType = newPlace.itemType
       const res = await fetch(`${API}/saved-items`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: USER_ID,
-          name: newPlace.name.trim(),
-          category: newPlace.category || 'attraction',
-          notes: newPlace.notes,
-          lat: newPin.lat,
-          lng: newPin.lng,
-          address: '',
-        }),
+        body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error()
       await fetchSaved(); fetchRecs()
@@ -1661,40 +1665,31 @@ export default function MapPage() {
     finally { setSaving(false) }
   }
 
-  // Photon result tap: save the place directly, no extra form step. Mirrors the
-  // POST shape of saveNewPlace. Coordinate order matters: Photon geometry is
-  // [lng, lat], so lat is coordinates[1] and lng is coordinates[0].
-  async function pickPlaceResult(feature) {
+  // Photon result tap: prefill the shared Add form (name, category, coords,
+  // address, itemType) so the user can review and edit before saving, instead
+  // of saving immediately. The existing Save button (saveNewPlace) does the one
+  // POST. Coordinate order matters: Photon geometry is [lng, lat], so lat is
+  // coordinates[1] and lng is coordinates[0].
+  function pickPlaceResult(feature) {
     const p = feature.properties || {}
     const coords = feature.geometry?.coordinates || []
     const lng = coords[0]
     const lat = coords[1]
     if (lat == null || lng == null) { showToast('Could not read that place'); return }
-    // Second layer over the disabled row state, covering the race where the
-    // pool changed after the results rendered.
+    // Flag a duplicate now, at form-fill time, rather than only at Save. Covers
+    // the race where the pool changed after the results rendered.
     if (featureMatchesSaved(feature, savedItems)) { showToast('Already in your places'); return }
-    if (saving) return
-    setSaving(true)
     const streetLine = [p.street, p.housenumber].filter(Boolean).join(' ')
     const name = p.name || streetLine || 'Unnamed place'
     const address = [streetLine, [p.postcode, p.city].filter(Boolean).join(' '), p.country].filter(Boolean).join(', ')
     const category = osmToCategory(p.osm_key, p.osm_value)
-    try {
-      const res = await fetch(`${API}/saved-items`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: USER_ID, name, category, notes: '', lat, lng, address, itemType: 'map_pin',
-        }),
-      })
-      if (!res.ok) throw new Error()
-      setPlaceQuery('')
-      setPlaceResults([])
-      await fetchSaved(); fetchRecs()
-      showToast(`Saved · ${name}`)
-      changeMode('map')
-    } catch { showToast('Save failed. Is the backend running?') }
-    finally { setSaving(false) }
+    // Prefill the shared form and drop the pin at the result; the user reviews,
+    // can tweak any field, then taps Save.
+    setNewPin({ lat, lng })
+    setNewPlace({ name, category, notes: '', address, itemType: 'map_pin' })
+    // Clear the search so the prefilled form is what's visible.
+    setPlaceQuery('')
+    setPlaceResults([])
   }
 
   // Escape hatch: the saved-pool search found nothing, so run Photon once for
@@ -2671,7 +2666,8 @@ export default function MapPage() {
             <button className="wb-add-x" aria-label="Cancel" onClick={() => changeMode('map')}><X size={16} /></button>
           </div>
 
-          {/* Search a real place (Photon). Tapping a result saves it directly. */}
+          {/* Search a real place (Photon). Tapping a result prefills the form
+              below so the user can review and edit before saving. */}
           <input
             className="wb-input"
             type="text"
