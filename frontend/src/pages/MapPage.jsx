@@ -2730,10 +2730,11 @@ export default function MapPage() {
               <div className="sub">München · tap the map to move the pin</div>
             </div>
           </div>
+          <div className="wb-cat-label">NAME</div>
           <input
             className="wb-input"
             type="text"
-            placeholder="What do you want to remember this place as?"
+            placeholder="Name this place"
             value={newPlace.name}
             onChange={e => setNewPlace({ ...newPlace, name: e.target.value })}
           />
@@ -2756,7 +2757,7 @@ export default function MapPage() {
           <div className="wb-cat-label">NOTE</div>
           <textarea
             className="wb-textarea"
-            placeholder="What do you want to remember this place as? (optional)"
+            placeholder="Add a note to help you remember it later (optional)"
             value={newPlace.notes}
             onChange={e => setNewPlace({ ...newPlace, notes: e.target.value })}
             rows={3}
