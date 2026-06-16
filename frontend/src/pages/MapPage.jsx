@@ -2730,11 +2730,10 @@ export default function MapPage() {
               <div className="sub">München · tap the map to move the pin</div>
             </div>
           </div>
-          <div className="wb-cat-label">NAME</div>
           <input
             className="wb-input"
             type="text"
-            placeholder="Name this place"
+            placeholder="What do you want to remember this place as?"
             value={newPlace.name}
             onChange={e => setNewPlace({ ...newPlace, name: e.target.value })}
           />
@@ -2751,17 +2750,9 @@ export default function MapPage() {
               )
             })}
           </div>
-          {/* Personal cue captured at save time. Re-finding (paper §3) leans on
-              this note, so it must be collected here, not just shown read-only
-              later. Bound to newPlace.notes, which the create POST already sends. */}
-          <div className="wb-cat-label">NOTE</div>
-          <textarea
-            className="wb-textarea"
-            placeholder="Add a note to help you remember it later (optional)"
-            value={newPlace.notes}
-            onChange={e => setNewPlace({ ...newPlace, notes: e.target.value })}
-            rows={3}
-          />
+          {/* Notes are not collected at save time. New saves go out with notes
+              empty; the user adds a personal cue afterward via the NOTE editor
+              in the detail panel (NOTES_EDIT_ENABLED). */}
           <button className="wb-save-btn" onClick={saveNewPlace} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </button>
