@@ -99,13 +99,29 @@ function osmToCategory(key, value) {
   return 'attraction'
 }
 
+// Photon's lat/lon is only a soft ranking bias, not a filter, so far-away name
+// matches (e.g. "apple" -> a store thousands of km away) still come back. Drop
+// anything beyond this radius from the search origin. Tunable; 200 km keeps
+// cross-border day trips (Salzburg, Innsbruck, Nuremberg) while cutting the
+// intercontinental noise.
+const PHOTON_MAX_DISTANCE_M = 200_000
+
 // Photon (free OSM geocoder) lookup, shared by the Add flow's debounced search
-// and the saved-search escape hatch. Returns the GeoJSON feature array (or []).
+// and the saved-search escape hatch. Returns the GeoJSON feature array (or []),
+// filtered to results within PHOTON_MAX_DISTANCE_M of (lat, lng) so both callers
+// only ever see nearby places.
 async function fetchPhoton(query, lat, lng) {
   const url = `https://photon.komoot.io/api?q=${encodeURIComponent(query)}&lat=${lat}&lon=${lng}&limit=5`
   const res = await fetch(url)
   const data = await res.json()
-  return Array.isArray(data?.features) ? data.features : []
+  const features = Array.isArray(data?.features) ? data.features : []
+  // Coordless results are kept (they sort to the end and are rejected at save
+  // time); Photon geometry is [lng, lat], so lat is c[1] and lng is c[0].
+  return features.filter(f => {
+    const c = f.geometry?.coordinates || []
+    if (c[0] == null || c[1] == null) return true
+    return haversineMeters(lat, lng, c[1], c[0]) <= PHOTON_MAX_DISTANCE_M
+  })
 }
 
 // Editorial Paper: cream chrome AND cream map for light mode (CARTO Positron).
@@ -2532,7 +2548,7 @@ export default function MapPage() {
                           <div className="wb-item-meta">Searching the map…</div>
                         )}
                         {!mapSearchLoading && mapSearchResults.length === 0 && (
-                          <div className="wb-item-meta">No places found for “{search.trim()}”.</div>
+                          <div className="wb-item-meta">No nearby places found for “{search.trim()}”.</div>
                         )}
                         {photonRowsByDistance(mapSearchResults).map(({ feature, distM }, i) => {
                           const p = feature.properties || {}
@@ -2681,7 +2697,7 @@ export default function MapPage() {
                 <div className="wb-item-meta">Searching…</div>
               )}
               {!placeSearching && placeResults.length === 0 && (
-                <div className="wb-item-meta">No matches</div>
+                <div className="wb-item-meta">No nearby matches</div>
               )}
               {photonRowsByDistance(placeResults).map(({ feature, distM }, i) => {
                 const p = feature.properties || {}
