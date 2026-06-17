@@ -2746,10 +2746,14 @@ export default function MapPage() {
               <div className="sub">München · tap the map to move the pin</div>
             </div>
           </div>
+          {/* NAME is the objective identifier (auto-filled from a Photon pick,
+              rarely edited); NOTE below is the subjective personal cue. Two
+              distinct fields, distinct labels and placeholders. */}
+          <div className="wb-cat-label">NAME</div>
           <input
             className="wb-input"
             type="text"
-            placeholder="What do you want to remember this place as?"
+            placeholder="Name this place"
             value={newPlace.name}
             onChange={e => setNewPlace({ ...newPlace, name: e.target.value })}
           />
@@ -2766,9 +2770,17 @@ export default function MapPage() {
               )
             })}
           </div>
-          {/* Notes are not collected at save time. New saves go out with notes
-              empty; the user adds a personal cue afterward via the NOTE editor
-              in the detail panel (NOTES_EDIT_ENABLED). */}
+          {/* NOTE is an optional subjective cue, empty by default (including for
+              Photon picks). saveNewPlace sends both name and notes; notes may be
+              empty. The detail-panel editor still allows editing it post-save. */}
+          <div className="wb-cat-label">NOTE</div>
+          <textarea
+            className="wb-textarea"
+            placeholder="What do you want to remember this place as? (optional)"
+            value={newPlace.notes}
+            onChange={e => setNewPlace({ ...newPlace, notes: e.target.value })}
+            rows={3}
+          />
           <button className="wb-save-btn" onClick={saveNewPlace} disabled={saving}>
             {saving ? 'Saving...' : 'Save'}
           </button>
