@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "design-check": "node scripts/design-check.mjs"
   },
   "dependencies": {
     "leaflet": "^1.9.4",
