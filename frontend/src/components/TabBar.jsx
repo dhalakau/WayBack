@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Map as MapIcon, Bookmark, Compass, CirclePlus } from 'lucide-react'
 
-// Shared bottom navigation — 4 tabs: Map / Saved / Plan / Add.
+// Shared bottom navigation: 4 tabs: Map / Saved / Plan / Add.
 //
 // Map / Saved / Add are MODES inside MapPage (the single-screen app); Plan is
 // its own route (/trip). To keep that asymmetry behind a single API:
@@ -41,7 +41,7 @@ export default function TabBar({ current, onModeSelect }) {
             <span>{label}</span>
           </>
         )
-        // Plan is always a route — never an in-page mode.
+        // Plan is always a route: never an in-page mode.
         // Map/Saved/Add use the callback when provided (MapPage), otherwise
         // become Links back into MapPage with the appropriate query.
         if (onModeSelect && key !== 'plan') {

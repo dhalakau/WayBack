@@ -6,7 +6,7 @@ import { MapContainer, TileLayer, Marker, Polyline, useMapEvents, useMap } from 
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import {
-  Search, X, Plus, Compass, Bookmark, Sun, Moon, Trash2, MapPin,
+  X, Plus, Compass, Bookmark, Sun, Moon, Trash2, MapPin,
   Coffee, UtensilsCrossed, Trees, Wine, Bed, ShoppingBag, Wrench,
   Train, Landmark, Camera, Navigation, Locate, MoreHorizontal,
   Cloud, CloudRain, CloudSnow, CloudFog, CloudLightning,
@@ -39,10 +39,10 @@ const USER_ID = 'user_demo'
 // success and never writes notes to local state on failure, so nothing fakes
 // persistence. Set to false to hide the editor if the route ever regresses.
 const NOTES_EDIT_ENABLED = true
-const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof — sensible demo location
+const DEFAULT_CENTER = [48.1402, 11.5586]  // Munich Hauptbahnhof: sensible demo location
 const DEFAULT_ZOOM = 15
 
-// Category metadata — matches the 10 categories in backend/seed.py
+// Category metadata: matches the 10 categories in backend/seed.py
 // Marker colors are pre-computed muted variants of the source category hues
 // (color-mix(in oklch, <orig> 55%, var(--paper-warm)) with powerless-hue
 // handling on the cream side). They preserve per-category recognizability
@@ -261,7 +261,7 @@ async function fetchRoute(from, to, mode) {
 }
 
 async function fetchOsrmRoute(from, to, mode) {
-  // The router.project-osrm.org demo only runs the CAR profile — all modes
+  // The router.project-osrm.org demo only runs the CAR profile: all modes
   // get the same response. The FOSSGIS routing.openstreetmap.de service
   // runs THREE separate OSRM instances, one per profile, addressed by URL
   // prefix. Same v5 API otherwise.
@@ -303,7 +303,7 @@ async function fetchOsrmRoute(from, to, mode) {
 // production deployment, self-host MOTIS or use a paid provider.
 
 const MUNICH_TRANSIT_AREAS = [
-  // Walking-distance from Hbf — show transit anyway for completeness
+  // Walking-distance from Hbf: show transit anyway for completeness
   { id: 'at-hbf',         centerLat: 48.1402, centerLng: 11.5586, radius: 350,
     finalStop: { name: 'Hauptbahnhof', lat: 48.1402, lng: 11.5586 },
     rideMin: 0,  lines: [],            transfers: 0 },
@@ -313,62 +313,62 @@ const MUNICH_TRANSIT_AREAS = [
     finalStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 },
     rideMin: 4,  lines: ['S1','S2','S4','S6','S7','S8'], transfers: 0 },
 
-  // Odeonsplatz / Café Luitpold corridor — U4/U5 from Hbf
+  // Odeonsplatz / Café Luitpold corridor: U4/U5 from Hbf
   { id: 'odeonsplatz',    centerLat: 48.1422, centerLng: 11.5772, radius: 350,
     finalStop: { name: 'Odeonsplatz', lat: 48.1422, lng: 11.5772 },
     rideMin: 5,  lines: ['U4','U5'],   transfers: 0 },
 
-  // Museum quarter (Alte Pinakothek, Lenbachhaus) — U2 to Königsplatz
+  // Museum quarter (Alte Pinakothek, Lenbachhaus): U2 to Königsplatz
   { id: 'museum-quarter', centerLat: 48.1476, centerLng: 11.5680, radius: 500,
     finalStop: { name: 'Königsplatz', lat: 48.1469, lng: 11.5658 },
     rideMin: 4,  lines: ['U2','U8'],   transfers: 0 },
 
-  // Glockenbach (Man vs Machine, Zephyr Bar) — U1/U2 via Sendlinger Tor
+  // Glockenbach (Man vs Machine, Zephyr Bar): U1/U2 via Sendlinger Tor
   { id: 'glockenbach',    centerLat: 48.1325, centerLng: 11.5720, radius: 500,
     finalStop: { name: 'Fraunhoferstraße', lat: 48.1303, lng: 11.5717 },
     rideMin: 6,  lines: ['U1','U2'],   transfers: 1,
     transferStop: { name: 'Sendlinger Tor', lat: 48.1340, lng: 11.5670 } },
 
-  // Augustiner / Hackerbrücke — 1 S-Bahn stop west
+  // Augustiner / Hackerbrücke: 1 S-Bahn stop west
   { id: 'augustiner',     centerLat: 48.1410, centerLng: 11.5500, radius: 500,
     finalStop: { name: 'Hackerbrücke', lat: 48.1410, lng: 11.5485 },
     rideMin: 2,  lines: ['S1','S2','S3','S4','S6','S7','S8'], transfers: 0 },
 
-  // Deutsches Museum — Tram 16 from Hbf
+  // Deutsches Museum: Tram 16 from Hbf
   { id: 'deutsches-museum', centerLat: 48.1299, centerLng: 11.5832, radius: 400,
     finalStop: { name: 'Deutsches Museum', lat: 48.1316, lng: 11.5800 },
     rideMin: 8,  lines: ['Tram 16'],   transfers: 0 },
 
-  // Schwabing south + Eisbach — S-Bahn + U-Bahn via Marienplatz
+  // Schwabing south + Eisbach: S-Bahn + U-Bahn via Marienplatz
   { id: 'eisbach',        centerLat: 48.1500, centerLng: 11.5860, radius: 600,
     finalStop: { name: 'Universität', lat: 48.1502, lng: 11.5808 },
     rideMin: 9,  lines: ['U3','U6'],   transfers: 1,
     transferStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 } },
 
-  // English Garden / Chinese Tower — U3/U6 via Marienplatz to Münchner Freiheit
+  // English Garden / Chinese Tower: U3/U6 via Marienplatz to Münchner Freiheit
   { id: 'english-garden', centerLat: 48.1620, centerLng: 11.5970, radius: 1500,
     finalStop: { name: 'Münchner Freiheit', lat: 48.1620, lng: 11.5870 },
     rideMin: 12, lines: ['U3','U6'],   transfers: 1,
     transferStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 } },
 
-  // Tantris area — U6 further north
+  // Tantris area: U6 further north
   { id: 'tantris',        centerLat: 48.1683, centerLng: 11.5938, radius: 400,
     finalStop: { name: 'Dietlindenstraße', lat: 48.1715, lng: 11.5949 },
     rideMin: 15, lines: ['U6'],        transfers: 1,
     transferStop: { name: 'Marienplatz', lat: 48.1374, lng: 11.5755 } },
 
-  // Olympia / BMW Welt / BMW Museum — U3 via Sendlinger Tor
+  // Olympia / BMW Welt / BMW Museum: U3 via Sendlinger Tor
   { id: 'olympia-bmw',    centerLat: 48.1762, centerLng: 11.5552, radius: 700,
     finalStop: { name: 'Olympiazentrum', lat: 48.1796, lng: 11.5510 },
     rideMin: 16, lines: ['U3'],        transfers: 1,
     transferStop: { name: 'Sendlinger Tor', lat: 48.1340, lng: 11.5670 } },
 
-  // Nymphenburg — Tram 17 direct from Hbf
+  // Nymphenburg: Tram 17 direct from Hbf
   { id: 'nymphenburg',    centerLat: 48.1590, centerLng: 11.5050, radius: 700,
     finalStop: { name: 'Schloss Nymphenburg', lat: 48.1607, lng: 11.5085 },
     rideMin: 17, lines: ['Tram 17'],   transfers: 0 },
 
-  // Au (Wirtshaus in der Au) — S-Bahn + walk
+  // Au (Wirtshaus in der Au): S-Bahn + walk
   { id: 'au',             centerLat: 48.1283, centerLng: 11.5876, radius: 400,
     finalStop: { name: 'Rosenheimer Platz', lat: 48.1278, lng: 11.5917 },
     rideMin: 6,  lines: ['S1','S2','S4','S6','S7','S8'], transfers: 0 },
@@ -389,7 +389,7 @@ function fakeTransitRoute(from, to) {
     if (d <= a.radius && d < bestDist) { best = a; bestDist = d }
   }
 
-  // Special case: destination is right at Hbf — nothing to ride.
+  // Special case: destination is right at Hbf: nothing to ride.
   if (best && best.id === 'at-hbf') {
     return {
       coords: [[from.lat, from.lng], [to.lat, to.lng]],
@@ -474,32 +474,6 @@ function fakeTransitRoute(from, to) {
   }
 }
 
-// Format the banner text per mode:
-//   foot    → "12 min walk · 850 m"
-//   bike    → "4 min bike · 850 m"
-//   car     → "3 min drive · 1.2 km"
-//   transit → "18 min · via U2 · 1 transfer"
-function formatRouteSummary(route, mode) {
-  if (!route) return ''
-  const mins = Math.max(1, Math.round(route.duration / 60))
-
-  if (mode === 'transit') {
-    const linesStr = route.transitLines?.length
-      ? ` · via ${route.transitLines.join(', ')}` : ''
-    const xferStr = route.transfers
-      ? ` · ${route.transfers} transfer${route.transfers > 1 ? 's' : ''}` : ''
-    return `${mins} min${linesStr}${xferStr}`
-  }
-
-  const dist = route.distance == null ? '' : (
-    route.distance < 1000
-      ? `${Math.round(route.distance)} m`
-      : `${(route.distance / 1000).toFixed(1)} km`
-  )
-  const verb = mode === 'bike' ? 'bike' : (mode === 'car' ? 'drive' : 'walk')
-  return `${mins} min ${verb}${dist ? ' · ' + dist : ''}`
-}
-
 const TRAVEL_MODES = [
   { id: 'foot',    Icon: Footprints, label: 'Walk' },
   { id: 'bike',    Icon: Bike,       label: 'Bike' },
@@ -575,10 +549,10 @@ function weatherIconFor(condition, isDay) {
 }
 
 // Context-aware score multiplier: nudges saved-item ranking based on weather
-// + time-of-day so the Map view "feels alive" — cafés in the morning, bars at
+// + time-of-day so the Map view "feels alive": cafés in the morning, bars at
 // night, museums when it rains, parks on sunny afternoons. Multipliers are
 // gentle (typically 0.5–1.6) so the backend's CIA/CBR/JITIR ranking still
-// drives the broad order — context only reorders within the top results.
+// drives the broad order: context only reorders within the top results.
 function contextBoost(category, weather, hour) {
   let b = 1.0
   const indoor   = ['museum','cafe','restaurant','bar','shopping','accommodation','services'].includes(category)
@@ -629,7 +603,7 @@ function contextBoost(category, weather, hour) {
 }
 
 // -----------------------------------------------------------------------------
-// Proactive notification — composite-signal evaluator (W4 brief)
+// Proactive notification: composite-signal evaluator (W4 brief)
 // -----------------------------------------------------------------------------
 
 /**
@@ -699,7 +673,7 @@ function evaluateProactiveSignal(rec, userLoc, now) {
   const forgotten      = daysSinceView > 14
   const oldSave        = daysSinceSaved > 60
 
-  // Compose firing patterns. Order matters — more specific patterns first.
+  // Compose firing patterns. Order matters: more specific patterns first.
   // Each pattern requires action_prediction (already gated above) PLUS at least
   // one other criterion firing, giving us a composite signal as the paper's
   // four-criterion framework recommends (Section 7).
@@ -769,7 +743,7 @@ function proactiveBannerText(item, reason, signals) {
 }
 
 // -----------------------------------------------------------------------------
-// SwipeableRow — horizontal-swipe-to-dismiss, vertical scrolls naturally,
+// SwipeableRow: horizontal-swipe-to-dismiss, vertical scrolls naturally,
 // pure tap (no movement past ~10px) fires onTap. Drag past ~100px dismisses.
 // -----------------------------------------------------------------------------
 
@@ -782,7 +756,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
     startRef.current = { x: e.clientX, y: e.clientY, locked: null, moved: false }
   }
   function onPointerMove(e) {
-    // Desktop mouse should not trigger swipe — gesture is touch/pen only.
+    // Desktop mouse should not trigger swipe: gesture is touch/pen only.
     if (e.pointerType === 'mouse') return
     const dx = e.clientX - startRef.current.x
     const dy = e.clientY - startRef.current.y
@@ -808,7 +782,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
       setTx(tx > 0 ? 500 : -500)
       setTimeout(() => onDismiss?.(), 220)
     } else if (lock === 'h') {
-      // snap back — drag wasn't far enough
+      // snap back: drag wasn't far enough
       setTx(0)
     } else if (lock === null && !moved) {
       // pure tap (no horizontal lock, no movement) → fire tap
@@ -837,7 +811,7 @@ function SwipeableRow({ onTap, onDismiss, children }) {
 }
 
 // -----------------------------------------------------------------------------
-// NotesEditor — post-save description editing inside the detail panel.
+// NotesEditor: post-save description editing inside the detail panel.
 // Kept as its own component so a key={item.id} at the call site remounts it on
 // navigation, resetting the draft without an effect. Editing is gated by
 // `enabled` (NOTES_EDIT_ENABLED): while off, the control is visibly disabled
@@ -898,7 +872,7 @@ function NotesEditor({ item, enabled, onUpdateNotes }) {
 }
 
 // -----------------------------------------------------------------------------
-// DetailPanel — the "flipbook" view. Tapping a place opens this overlay.
+// DetailPanel: the "flipbook" view. Tapping a place opens this overlay.
 // Swipe left/right (or use the chevrons) to flip between saved places.
 // -----------------------------------------------------------------------------
 
@@ -1019,7 +993,7 @@ function DetailPanel({ itemId, items, contextLabel, onClose, onNavigate, onDelet
 
           {/* Paper §3: tags surface user-chosen labels (e.g. "rooftop", "rainy day")
               in the detail panel. Backend may return tags as a comma-separated
-              string OR as an array — handle both shapes. The saved-list search
+              string OR as an array: handle both shapes. The saved-list search
               bar already matches tags as one of its fields. */}
           {(() => {
             const raw = item.tags
@@ -1125,13 +1099,13 @@ export default function MapPage() {
   // session. Reopening a rated item shows the confirmation, not the buttons.
   // Session-only by design: no localStorage, so a fresh load lets re-rating.
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(() => new Set())
-  // Paper §3 — saved-item ordering: recency, frequency, alpha, proximity.
+  // Paper §3: saved-item ordering: recency, frequency, alpha, proximity.
   // Sort is applied AFTER category/search/type filters in listToShow().
   const [activeSort, setActiveSort] = useState('recent')
   const [sortMenuOpen, setSortMenuOpen] = useState(false)
   const sortDropdownRef = useRef(null)
   // Open/close state for the "More" category overflow dropdown next to the
-  // pill row (Bug 2 — Bars, Hotels, Shopping, Services, Transport).
+  // pill row (Bug 2: Bars, Hotels, Shopping, Services, Transport).
   // FIX 4: the menu is rendered through a portal so it isn't clipped by
   // the .wb-pills horizontal-scroll container's overflow. moreTriggerRect
   // captures the trigger's bounding rect at open time for anchoring.
@@ -1142,7 +1116,7 @@ export default function MapPage() {
   const [moreTriggerRect, setMoreTriggerRect] = useState(null)
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
-  // Paper §3 — second-tier filter by saved-item type (bookmark/ticket/map_pin/note).
+  // Paper §3: second-tier filter by saved-item type (bookmark/ticket/map_pin/note).
   // null = "All Types"; only surfaced in Saved view to keep Map view uncluttered.
   const [activeType, setActiveType] = useState(null)
 
@@ -1179,7 +1153,7 @@ export default function MapPage() {
   const [dismissed, setDismissed] = useState(new Set())    // hide from Map view (not Saved)
   const [navTarget, setNavTarget] = useState(null)         // active route destination
   const [routesByMode, setRoutesByMode] = useState({})     // { foot, bike, car, transit } each → route|null
-  const [routeLoading, setRouteLoading] = useState(false)  // true while ANY mode is still pending
+  const [, setRouteLoading] = useState(false)  // true while ANY mode is still pending
   const [travelMode, setTravelMode] = useState('foot')     // 'foot' | 'bike' | 'car' | 'transit'
 
   // Live context: real Munich weather (Open-Meteo) + ticking clock.
@@ -1236,7 +1210,7 @@ export default function MapPage() {
   // the same way the right-side FAB cluster does.
   const themeRef = useRef(null)
   const dragRef = useRef({ startY: 0, startOffset: 200, dragging: false, snap: 200 })
-  // Mirror of dragRef.snap into React state — needed because the bottom-sheet
+  // Mirror of dragRef.snap into React state: needed because the bottom-sheet
   // body has to disappear at the floor (Bug 3), and dragRef alone cannot
   // trigger re-renders. Updated in applyOffset() below.
   const [snapPx, setSnapPx] = useState(200)
@@ -1268,7 +1242,7 @@ export default function MapPage() {
     // is why TripPage redirects here as ?mode=plan on desktop). Ignored on
     // mobile so a stray ?mode=plan there just lands on the map.
     if (next === 'plan' && isDesktop) changeMode('plan')
-    // Intentionally only on first mount — subsequent changes use changeMode().
+    // Intentionally only on first mount: subsequent changes use changeMode().
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -1359,14 +1333,14 @@ export default function MapPage() {
     return () => { cancelled = true; clearInterval(id) }
   }, [])
 
-  // Ticking clock — updates every 60 s so the time pill stays accurate
+  // Ticking clock: updates every 60 s so the time pill stays accurate
   // and the contextBoost() recomputes when crossing an hour boundary.
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(new Date()), 60 * 1000)
     return () => clearInterval(id)
   }, [])
 
-  // Sort dropdown — close on outside click / Escape.
+  // Sort dropdown: close on outside click / Escape.
   useEffect(() => {
     if (!sortMenuOpen) return
     function onDocClick(e) {
@@ -1383,7 +1357,7 @@ export default function MapPage() {
     }
   }, [sortMenuOpen])
 
-  // "More" category dropdown — close on outside click / Escape.
+  // "More" category dropdown: close on outside click / Escape.
   // FIX 4: the menu is portaled to <body>, so we have to whitelist BOTH the
   // wrap (which holds the trigger) AND the portaled menu node when deciding
   // whether a click counts as "outside".
@@ -1506,7 +1480,7 @@ export default function MapPage() {
           return
         }
 
-        // Walk the ranked list — first item that satisfies the composite gate
+        // Walk the ranked list: first item that satisfies the composite gate
         // AND is not in the user's dismissed set wins the banner slot.
         for (const rec of data) {
           if (dismissedAlerts.has(rec.item.id)) continue
@@ -1523,7 +1497,7 @@ export default function MapPage() {
         }
         setProactiveAlert(null)
       } catch {
-        setProactiveAlert(null)  // network failure — clear stale alert
+        setProactiveAlert(null)  // network failure: clear stale alert
       }
     }
 
@@ -1544,7 +1518,7 @@ export default function MapPage() {
       const params = new URLSearchParams({
         userId: USER_ID, lat: userLoc.lat, lng: userLoc.lng, method,
       })
-      // Pass real weather to backend — pick_reason() already uses 'rain';
+      // Pass real weather to backend: pick_reason() already uses 'rain';
       // the recommender methods receive it in context too.
       if (weather?.condition && weather.condition !== 'clear' && weather.condition !== 'clouds') {
         params.set('weather', weather.condition)
@@ -1552,7 +1526,7 @@ export default function MapPage() {
       const res = await fetch(`${API}/recommendations?${params}`)
       const data = await res.json()
       if (Array.isArray(data)) setRecommendations(data)
-    } catch {/* ignore — leave previous recs visible */}
+    } catch {/* ignore: leave previous recs visible */}
   }
 
   // ---- toast ----------------------------------------------------------------
@@ -1608,7 +1582,7 @@ export default function MapPage() {
   }
 
   // ---- pill click ------------------------------------------------------------
-  // Paper §3 — category is the dominant re-finding cue for tourism items;
+  // Paper §3: category is the dominant re-finding cue for tourism items;
   // making the pill row a real filter (not just a visual) so it cuts both
   // the bottom-sheet list AND the map markers down to the picked category.
   function pickPill(key) {
@@ -1765,20 +1739,6 @@ export default function MapPage() {
     }
   }
 
-  // ---- feedback (for the eval, called when user taps an item) ---------------
-  async function sendFeedback(itemId, useful) {
-    try {
-      await fetch(`${API}/feedback`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: USER_ID, itemId, useful, method: method.toUpperCase(),
-          contextSnapshot: { lat: userLoc.lat, lng: userLoc.lng, time: Date.now() },
-        }),
-      })
-    } catch {/* eval data is non-critical for UX */}
-  }
-
   // ---- detail panel (the "flipbook" view) ------------------------------------
   // Tapping a place opens this; it also fires GET /saved-items/:id which the
   // backend uses to increment viewCount + lastViewedAt (feeds the CIA model).
@@ -1804,7 +1764,7 @@ export default function MapPage() {
         : it
     )))
 
-    // TODO: backend needs POST /items/:id/view endpoint — coordinate with Sway.
+    // TODO: backend needs POST /items/:id/view endpoint: coordinate with Sway.
     // Fire-and-forget; we don't await it so render isn't blocked.
     try { fetch(`${API}/items/${itemId}/view`, { method: 'POST' }) } catch { /* fire-and-forget */ }
 
@@ -1903,17 +1863,17 @@ export default function MapPage() {
   function listToShow() {
     const q = search.trim().toLowerCase()
     const filterFn = item => {
-      // Paper §3 — re-finding search: match across name, notes, and tags.
+      // Paper §3: re-finding search: match across name, notes, and tags.
       // Tags may be a string or an array depending on backend shape.
       if (q) {
         const tagText = Array.isArray(item.tags) ? item.tags.join(' ') : (item.tags || '')
         const hay = `${item.name} ${item.notes || ''} ${tagText}`.toLowerCase()
         if (!hay.includes(q)) return false
       }
-      // Paper §3 — category filter applies in both Map and Saved views so
+      // Paper §3: category filter applies in both Map and Saved views so
       // the pill choice carries through when switching between them.
       if (filter !== 'all' && item.category !== filter) return false
-      // Paper §3 — saved-item-type filter (second-tier; only set in Saved view).
+      // Paper §3: saved-item-type filter (second-tier; only set in Saved view).
       if (activeType && item.itemType !== activeType) return false
       return true
     }
@@ -1933,8 +1893,8 @@ export default function MapPage() {
         }))
         .sort((a, b) => b.contextScore - a.contextScore)
     } else {
-      // Saved mode: locally sorted full list (ignores dismissed — it's a different view).
-      // Paper §3: saved-item ordering — recency, frequency, alpha, proximity.
+      // Saved mode: locally sorted full list (ignores dismissed: it's a different view).
+      // Paper §3: saved-item ordering: recency, frequency, alpha, proximity.
       // Sort applied after category/search/type filters.
       const items = [...savedItems].filter(filterFn)
       // 'distance' requires a known user location; otherwise fall back to recency.
@@ -1955,7 +1915,7 @@ export default function MapPage() {
   // ---- sheet drag logic -----------------------------------------------------
   // Drag bounds: bottom floor leaves the title row + 3 segmented buttons
   // visible; top ceiling is full-screen. Within that range the sheet stays
-  // wherever the user releases — no snap points.
+  // wherever the user releases: no snap points.
   const SNAP_PEEK = 200          // default peek when entering Map mode
   const SNAP_FLOOR = 130         // minimum visible (handle + header + segmented)
   function getSnapFull() {
@@ -1982,7 +1942,7 @@ export default function MapPage() {
     setSnapPx(offsetFromBottom)
   }
 
-  // Initial position is handled entirely by CSS — the sheet's
+  // Initial position is handled entirely by CSS: the sheet's
   // `transform: translateY(calc(100% - 200px))` and the FAB
   // `bottom: 276px` give a 200px peek state on first paint. JS only
   // takes over once the user drags or switches modes.
@@ -2008,7 +1968,7 @@ export default function MapPage() {
     if (!dragRef.current.dragging) return
     dragRef.current.dragging = false
     sheetRef.current?.classList.remove('dragging')
-    // Free drag — stay wherever the user released, just enforce bounds.
+    // Free drag: stay wherever the user released, just enforce bounds.
     const SNAP_FULL = getSnapFull()
     const clamped = Math.max(SNAP_FLOOR, Math.min(SNAP_FULL, dragRef.current.snap))
     applyOffset(clamped)
@@ -2063,7 +2023,7 @@ export default function MapPage() {
             <SearchFocus query={search} items={savedItems} />
             <Marker position={[userLoc.lat, userLoc.lng]} icon={youAreHereIcon} />
             {savedItems.map(it => {
-              // Paper §3 — when a category filter is active, dim non-matching
+              // Paper §3: when a category filter is active, dim non-matching
               // markers (keep them on the map for spatial context, don't hide).
               const dim = filter !== 'all' && it.category !== filter
               return (
@@ -2186,7 +2146,7 @@ export default function MapPage() {
             </div>
           )}
 
-          {/* Sort moved to a dropdown in the Saved sheet header — see
+          {/* Sort moved to a dropdown in the Saved sheet header: see
               .wb-sort-dropdown below. The state (activeSort) and sort logic
               in listToShow() are unchanged. */}
         </div>
@@ -2385,7 +2345,7 @@ export default function MapPage() {
             <div className="wb-sheet-title">{sheetTitle}</div>
             {mode === 'saved' && (
               <div className="wb-sheet-actions">
-                {/* Paper §3 — sort dropdown (recency / frequency / alpha /
+                {/* Paper §3: sort dropdown (recency / frequency / alpha /
                     proximity). Hidden while the Compare-methods view is
                     showing because that view ignores the saved-list sort. */}
                 {!compareMode && (() => {
@@ -2441,7 +2401,7 @@ export default function MapPage() {
                   )
                 })()}
                 {/* "Plan my day" moved to the bottom navigation as the Plan
-                    tab — see TabBar.jsx — to declutter this header. */}
+                    tab (see TabBar.jsx) to declutter this header. */}
                 <button
                   type="button"
                   className="wb-compare-toggle"
@@ -2470,7 +2430,7 @@ export default function MapPage() {
               Tab order: For this moment (JITIR) is leftmost since it is the
               default active method (Bug 3 reorder).
               Saved view's sort lives in the chip row above the sheet
-              (Paper §3 — recency / frequency / alpha / proximity). */}
+              (Paper §3: recency / frequency / alpha / proximity). */}
           {mode === 'map' && (
             <div className="wb-segmented">
               {['jitir', 'cbr', 'cia'].map(m => (
@@ -2811,7 +2771,7 @@ export default function MapPage() {
         {toast && <div className="wb-toast show">{toast}</div>}
       </div>
 
-      {/* FIX 4: More dropdown — portaled to <body> so the .wb-pills
+      {/* FIX 4: More dropdown: portaled to <body> so the .wb-pills
           horizontal-scroll container's overflow can't clip it. Anchored
           via fixed positioning to the trigger's bounding rect (captured
           in the moreOpen effect above). Opens downward over the map. */}

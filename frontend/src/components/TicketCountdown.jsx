@@ -1,6 +1,6 @@
 // Paper §3: tickets are time-sensitive saved items; surfacing event date
 // makes re-finding actionable. A bookmark to a museum is open-ended ("go
-// some time"), but a ticket is anchored to a specific moment — the most
+// some time"), but a ticket is anchored to a specific moment: the most
 // useful single piece of information when you reopen it is "how soon?".
 import { Calendar } from 'lucide-react'
 
