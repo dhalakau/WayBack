@@ -557,6 +557,7 @@ body { font-family: var(--font-body); }
 /* add-card slides up; sheet tucks away ------------------------------- */
 .wb-add-card {
   position: absolute; left: 0; right: 0; bottom: 60px;
+  box-sizing: border-box;
   background: var(--paper-warm);
   border-top-left-radius: 18px; border-top-right-radius: 18px;
   z-index: 600; padding: 16px 16px 18px;
