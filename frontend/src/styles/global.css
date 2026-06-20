@@ -362,12 +362,6 @@ body { font-family: var(--font-body); }
   transition: bottom 0.32s cubic-bezier(0.2,0.8,0.2,1), background 0.15s, color 0.15s;
 }
 .wb-theme-toggle:hover { color: var(--pin); }
-/* Add mode hides the bottom-corner chrome to keep the add-card focused.
-   FABs stay visible in all modes today, so the theme toggle does too in
-   Saved view. */
-.wb-app[data-mode="add"] .wb-theme-toggle {
-  opacity: 0; pointer-events: none;
-}
 .wb-method-tag {
   position: absolute; top: 124px; right: 64px;
   background: var(--paper-soft); border-radius: 14px; padding: 4px 10px;
