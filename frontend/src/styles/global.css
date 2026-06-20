@@ -1670,7 +1670,7 @@ body { font-family: var(--font-body); }
      in from the left. */
   .wb-add-card {
     position: fixed;
-    left: 16px; right: auto; top: 16px; bottom: 76px;
+    left: 16px; right: auto; top: 16px; bottom: 16px;
     width: 380px; max-height: none;
     background: var(--paper);
     border: 1px solid var(--rule);
