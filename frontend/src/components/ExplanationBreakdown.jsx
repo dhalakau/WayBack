@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { MapPin, Clock, Compass, X, BookOpen } from 'lucide-react'
 import { formatDistance } from '../utils/formatDistance'
 
 /**
- * ExplanationBreakdown — surfaces the paper's four evaluation criteria
+ * ExplanationBreakdown: surfaces the paper's four evaluation criteria
  * (Sappelli et al., 2017, Section 4) as user-facing UI signals.
  *
  * W4 brief requirement: "generate and display explanations for the

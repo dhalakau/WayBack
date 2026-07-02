@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Sun, Sunset, Moon, X, BookOpen, Loader2 } from 'lucide-react'
 
@@ -6,12 +6,12 @@ const API = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localho
 const USER_ID = 'user_demo'  // matches the seed user used elsewhere in this app
 
 /**
- * MethodCompare — side-by-side view of the paper's three recommendation
+ * MethodCompare: side-by-side view of the paper's three recommendation
  * methods (CBR / JITIR / CIA) under three different context presets.
  *
  * Implements the paper's central comparison (Sappelli et al., 2017, §5–§6):
  * the same user, same saved items, but three different methods producing
- * three different rankings — and a context selector that makes the
+ * three different rankings. A context selector then makes the
  * "context-aware" nature of the methods visible by varying location + hour.
  *
  * Top-3 items per method are shown so the user can compare ranking head-to-head.

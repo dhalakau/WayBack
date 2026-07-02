@@ -24,14 +24,14 @@ import TypeBadge from './TypeBadge'
 const API = (import.meta.env && import.meta.env.VITE_API_URL) || 'http://localhost:8000'
 const USER_ID = 'user_demo'
 
-// Fixed Munich Hauptbahnhof — matches MapPage's demo location so the first
+// Fixed Munich Hauptbahnhof: matches MapPage's demo location so the first
 // stop is selected relative to a known anchor regardless of geolocation.
 const DEFAULT_LOC = { lat: 48.1402, lng: 11.5586 }
 
 // 5 km/h average pedestrian pace → m/min for walking-time estimates.
 const WALK_M_PER_MIN = (5_000) / 60
 
-// Slot definitions — primary categories per time of day (paper §4.4
+// Slot definitions: primary categories per time of day (paper §4.4
 // document-relevance proxy via category × hour). `fallback` is used only if
 // no saved item matches the primary set for that slot.
 const SLOTS = [
@@ -63,7 +63,7 @@ const SLOTS = [
   },
 ]
 
-// Category meta — small subset of MapPage's CATEGORIES, kept local so this
+// Category meta: small subset of MapPage's CATEGORIES, kept local so this
 // component is self-contained. Used for icons + labels on each stop card.
 const CATEGORY_META = {
   attraction:    { label: 'Attraction',  Icon: Camera },
@@ -103,7 +103,7 @@ function formatDistance(meters) {
 // Build the itinerary stop-by-stop. For each slot we:
 //   1. Filter saved items that are (a) not already chosen and (b) match the
 //      slot's primary categories. If empty, retry against the fallback list.
-//   2. Sort by distance to the previous stop (paper §4.3 context relevance) —
+//   2. Sort by distance to the previous stop (paper §4.3 context relevance):
 //      for slot 1 the "previous stop" is the user's location.
 //   3. Pick the closest and add to the chosen set to enforce diversity
 //      (paper §4.6).
@@ -200,7 +200,7 @@ function Itinerary({ items, userLoc }) {
 
   // Total walking distance / time: sum of segments BETWEEN consecutive stops
   // (skip the first stop's leg from the user's location, since the user picks
-  // the start time — only inter-stop walking is part of the "day plan" budget).
+  // the start time: only inter-stop walking is part of the "day plan" budget).
   const interStopMeters = stops.slice(1).reduce((sum, s) => sum + s.distanceM, 0)
   const totalMinutes = walkMinutes(interStopMeters)
   const categories = new Set(stops.map(s => s.item.category)).size

@@ -16,7 +16,7 @@ function readStoredTheme() {
   try {
     const v = localStorage.getItem(STORAGE_KEY)
     if (v === 'dark' || v === 'light') return v
-  } catch {}
+  } catch { /* ignore: localStorage unavailable */ }
   return 'light'
 }
 

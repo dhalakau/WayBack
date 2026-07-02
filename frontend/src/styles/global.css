@@ -63,11 +63,11 @@
 }
 
 /* ============================================================
-   Dark theme overrides — re-introduced 2026-05-26 (superseding the
+   Dark theme overrides: re-introduced 2026-05-26 (superseding the
    2026-05-21 removal noted above) per task spec. Keeps the warm
    editorial feel: deep cocoa paper, off-white ink, softened coral pin.
    Toggled via <html data-theme="dark">. Light mode is the default and
-   needs no explicit selector — the :root tokens above already cover it.
+   needs no explicit selector: the :root tokens above already cover it.
    ============================================================ */
 html[data-theme="dark"] {
   color-scheme: dark;
@@ -130,7 +130,7 @@ body { font-family: var(--font-body); }
   outline: 4px solid rgba(66,133,244,0.28);
 }
 
-/* Paper §6.3 — proactive banner and search/pills share a single flex column
+/* Paper §6.3: proactive banner and search/pills share a single flex column
    so that when the banner appears it pushes the search bar + pills down
    naturally instead of z-stacking on top of them. Weather / method-tag /
    layers / FABs keep their own absolute positions on the periphery. */
@@ -228,7 +228,7 @@ body { font-family: var(--font-body); }
   background: rgba(196,69,54,0.10);
 }
 
-/* Paper §3 — second-tier saved-item-type chips (Saved view only) */
+/* Paper §3: second-tier saved-item-type chips (Saved view only) */
 .wb-type-chips {
   margin-top: 8px;
   display: flex; gap: 6px; overflow-x: auto;
@@ -253,7 +253,7 @@ body { font-family: var(--font-body); }
   border-color: var(--ink);
 }
 
-/* Paper §3 — saved-item sort, rendered as a small dropdown in the
+/* Paper §3: saved-item sort, rendered as a small dropdown in the
    Saved sheet header (lives next to the Compare-methods toggle). */
 .wb-sheet-actions {
   display: flex; align-items: center; gap: 8px;
@@ -407,7 +407,22 @@ body { font-family: var(--font-body); }
   cursor: grab; touch-action: none;
 }
 .wb-handle-area:active { cursor: grabbing; }
-.wb-handle { width: 36px; height: 4px; background: var(--handle); border-radius: 2px; }
+/* DESIGN.md ban 5: the default 36x4px gray iOS pill is replaced with a thin
+   --pin line that pulses on load to draw the eye to the drag affordance, then
+   settles. Only opacity and transform are animated, per Motion Principles, and
+   the pulse is disabled under prefers-reduced-motion. */
+.wb-handle {
+  width: 32px; height: 2px; background: var(--pin); border-radius: 1px;
+  transform-origin: center;
+  animation: wb-handle-pulse 1.4s cubic-bezier(0.2,0.8,0.2,1) 3;
+}
+@keyframes wb-handle-pulse {
+  0%, 100% { opacity: 1; transform: scaleX(1); }
+  50%      { opacity: 0.5; transform: scaleX(0.7); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wb-handle { animation: none; }
+}
 .wb-sheet-header {
   padding: 4px 16px 12px; display: flex; align-items: center; justify-content: space-between;
 }
@@ -495,7 +510,7 @@ body { font-family: var(--font-body); }
 .wb-item-name { font-size: 14px; font-weight: 500; font-family: var(--font-display); }
 .wb-item-meta { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 
-/* Paper §3 — type badge pill (bookmark / ticket / map_pin / note) */
+/* Paper §3: type badge pill (bookmark / ticket / map_pin / note) */
 .wb-type-badge {
   display: inline-flex; align-items: center; gap: 4px;
   padding: 2px 7px;
@@ -511,7 +526,7 @@ body { font-family: var(--font-body); }
 }
 .wb-type-badge svg { opacity: 0.85; }
 .wb-type-badge-label { line-height: 1; }
-/* Tickets are time-sensitive — give them an accent highlight so they pop. */
+/* Tickets are time-sensitive: give them an accent highlight so they pop. */
 .wb-type-badge--ticket {
   background: rgba(196,69,54,0.16);
   color: var(--pin);
@@ -639,7 +654,7 @@ body { font-family: var(--font-body); }
 
 /* ===== phase 3 ============================================== */
 
-/* Swipeable rows — make sure they cooperate with vertical scrolling */
+/* Swipeable rows: make sure they cooperate with vertical scrolling */
 .wb-swipeable { touch-action: pan-y; will-change: transform; }
 
 .wb-fab.is-active {
@@ -742,7 +757,7 @@ body { font-family: var(--font-body); }
   font-size: 14px; font-weight: 500;
 }
 
-/* Detail panel — the "flipbook" overlay */
+/* Detail panel: the "flipbook" overlay */
 .wb-detail {
   position: absolute; inset: 0;
   background: var(--paper);
@@ -791,7 +806,7 @@ body { font-family: var(--font-body); }
   align-self: flex-start;
   text-transform: uppercase; letter-spacing: 0.6px;
 }
-/* Bug 8 — tiny breadcrumb above the category chip telling the user which
+/* Bug 8: tiny breadcrumb above the category chip telling the user which
    filter context the arrow nav is scoped to ("From: For this moment"). */
 .wb-detail-crumb {
   font-size: 11px;
@@ -839,7 +854,7 @@ body { font-family: var(--font-body); }
 .wb-notes-edit-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .wb-notes-pending { font-size: 11px; color: var(--ink-soft); }
 
-/* Paper §3 — tag chips on the detail panel (read-only display) */
+/* Paper §3: tag chips on the detail panel (read-only display) */
 .wb-detail-tags {
   display: flex; flex-wrap: wrap; gap: 6px;
 }
@@ -880,7 +895,7 @@ body { font-family: var(--font-body); }
   font-size: 13px; color: var(--ink-soft);
 }
 
-/* Paper §3 — ticket event countdown (only shown for itemType=ticket) */
+/* Paper §3: ticket event countdown (only shown for itemType=ticket) */
 .wb-ticket-countdown {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 14px;
@@ -998,14 +1013,14 @@ body { font-family: var(--font-body); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Proactive banner, map-overlay variant — single compact row anchored to
+/* Proactive banner, map-overlay variant: single compact row anchored to
    the map directly below the weather/time + method-tag + layers row.
    top: 172px clears the layers button (bottom edge at 160px) with a 12px
    gap. left/right: 12px match the search bar's horizontal range so the
    banner reads as the next "row" of map chrome. Stays in place when the
    bottom sheet drags, because it isn't a sheet child.
    Height is intentionally intrinsic to content (no bottom, no height,
-   explicit min/max-height resets) — the previous version was rendering
+   explicit min/max-height resets): the previous version was rendering
    as a tall empty box on some browsers. Solid paper-soft background
    replaces the base's translucent pink so it reads as a real surface
    floating over the map instead of a hollow outline. */
@@ -1015,7 +1030,7 @@ body { font-family: var(--font-body); }
   left: 12px;
   right: 12px;
   z-index: 500;
-  /* Defensive height bounds — keep the row intrinsic regardless of any
+  /* Defensive height bounds: keep the row intrinsic regardless of any
      ancestor inset/flex weirdness. */
   height: auto;
   min-height: 0;
@@ -1039,7 +1054,7 @@ body { font-family: var(--font-body); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ExplanationBreakdown — inline section (W4 brief; paper §4) ------ */
+/* ExplanationBreakdown: inline section (W4 brief; paper §4) ------ */
 /* Uses existing --surface-1 / --text-1 / --text-2 (this file's vars). */
 .wb-explain {
   margin: 16px 0 0;
@@ -1072,7 +1087,7 @@ body { font-family: var(--font-body); }
   border-radius: 12px;
 }
 /* FIX 7: the data-strength="strong" rule used to add a pink background to
-   rows with three bars, which read like "selected/active" — misleading
+   rows with three bars, which read like "selected/active": misleading
    since strength is already shown by the bars. All rows now share the same
    neutral row background; only the meter varies. The "none" rule stays as
    a fade-out so rows with no evidence still visibly recede. */
@@ -1117,7 +1132,7 @@ body { font-family: var(--font-body); }
   border-color: rgba(196,69,54,0.40);
 }
 
-/* AttributionModal — nested modal over DetailPanel ----------------- */
+/* AttributionModal: nested modal over DetailPanel ----------------- */
 .wb-attr-backdrop {
   position: fixed; inset: 0;
   background: rgba(0,0,0,0.55);
@@ -1296,7 +1311,7 @@ body { font-family: var(--font-body); }
   color: var(--pin);
   letter-spacing: 0.04em;
 }
-/* Editorial one-liner under each column title — matches the detail page's
+/* Editorial one-liner under each column title: matches the detail page's
    plain-voice copy register, kept Public Sans / ink-soft to sit quietly
    beneath the pin-red title. */
 .wb-compare-col-sub {
