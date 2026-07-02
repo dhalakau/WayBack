@@ -1800,7 +1800,7 @@ export default function MapPage() {
     setDismissedAlerts(prev => {
       const next = new Set(prev)
       next.add(id)
-      try { localStorage.setItem('wb_dismissed_alerts', JSON.stringify([...next])) } catch {}
+      try { localStorage.setItem('wb_dismissed_alerts', JSON.stringify([...next])) } catch { /* ignore: localStorage unavailable */ }
       return next
     })
     setProactiveAlert(null)

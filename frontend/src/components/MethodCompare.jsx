@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Sun, Sunset, Moon, X, BookOpen, Loader2 } from 'lucide-react'
 
