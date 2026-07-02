@@ -2536,7 +2536,7 @@ export default function MapPage() {
                 </div>
               ) : (
                 <div className="wb-empty">
-                  Nothing here yet. Tap <strong style={{ color: 'var(--accent)' }}>Add</strong> to save your first place.
+                  Nothing here yet. Tap <strong style={{ color: 'var(--pin)' }}>Add</strong> to save your first place.
                 </div>
               )
             ) : list.map(({ item, explanation }) => {
