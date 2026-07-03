@@ -2784,7 +2784,10 @@ export default function MapPage() {
           style={{
             position: 'fixed',
             top: moreTriggerRect.bottom + 6,
-            left: moreTriggerRect.left,
+            maxWidth: 'calc(100vw - 16px)',
+            ...(moreTriggerRect.left > window.innerWidth / 2
+              ? { right: window.innerWidth - moreTriggerRect.right }
+              : { left: moreTriggerRect.left }),
           }}
         >
           {MORE_PILLS.map(key => {
