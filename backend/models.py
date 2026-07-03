@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean
+from sqlalchemy import Column, Integer, BigInteger, String, Float, DateTime, Boolean
 from database import Base
 import datetime
 
@@ -37,5 +37,5 @@ class Feedback(Base):
     method     = Column(String)           # CBR | JITIR | CIA
     lat        = Column(Float)
     lng        = Column(Float)
-    time       = Column(Integer)          # unix ms snapshot of when feedback was given
+    time       = Column(BigInteger)          # unix ms snapshot of when feedback was given
     created_at = Column(DateTime, default=now_utc)
