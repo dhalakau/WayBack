@@ -1,11 +1,18 @@
 # TODO
 
-## Lint cleanup before vitest (6/17)
+## Lint cleanup (updated 2026-07-12)
 
-Dead and unused items found 2026-06-15 (ESLint). Not AI-related; safe to remove in the cleanup pass.
+Done (verified gone from frontend/src/pages/MapPage.jsx):
 
-- `formatRouteSummary` (frontend/src/pages/MapPage.jsx:498): dead, ESLint unused
-- unused `Search` import (frontend/src/pages/MapPage.jsx:9)
-- `routeLoading` (frontend/src/pages/MapPage.jsx:1199): unused
-- `sendFeedback` (frontend/src/pages/MapPage.jsx:1791): unused
-- pre-existing refs-during-render warnings to resolve (frontend/src/pages/MapPage.jsx, e.g. lines 845 and 960)
+- [x] `formatRouteSummary`: removed
+- [x] unused `Search` import: removed
+- [x] `routeLoading`: removed
+- [x] dead `sendFeedback`: removed (live `submitFeedback` is wired to the detail panel)
+
+Open ESLint findings (7 errors, 2 warnings). CI lint stays `continue-on-error`
+until these are cleared:
+
+- [ ] refs accessed during render: MapPage.jsx 802, 963
+- [ ] setState called synchronously in an effect: MapPage.jsx 1295, 1399, 1990
+- [ ] component created during render (weather icon): MapPage.jsx 2177
+- [ ] exhaustive-deps warnings: ExplanationBreakdown.jsx 48, MapPage.jsx 1507
