@@ -1,0 +1,1215 @@
+\documentclass[acmlarge]{acmart}
+
+\AtBeginDocument{%
+  \providecommand\BibTeX{{%
+    Bib\TeX}}}
+
+%% ============================================================
+%% RIGHTS / METADATA
+%% For a course submission (not an official ACM publication) you can
+%% leave these as-is or simplify. They do not affect grading.
+%% If you want to remove the "ACM Reference Format" / copyright strip,
+%% you may add \settopmatter{printacmref=false} below.
+%% ============================================================
+\settopmatter{printacmref=false}      % hide ACM reference block (course doc, not a real ACM paper)
+\setcopyright{none}                   % no copyright line
+\renewcommand\footnotetextcopyrightpermission[1]{} % kill the copyright footnote
+
+\begin{document}
+
+%% ============================================================
+%% TITLE
+%% ============================================================
+\title{WayBack: A Context-Aware Recommender System for Re-Finding Personal Information in Tourism}
+
+%% ============================================================
+%% AUTHORS  (use full names exactly as on TUM transcripts)
+%% ============================================================
+\author{Haichen Duan}
+\email{haichen.duan@tum.de}
+\affiliation{%
+  \institution{Technical University of Munich}
+  \city{Munich}
+  \country{Germany}}
+
+\author{Swayamsidh Mohanty}
+\email{swayamsidh.mohanty@tum.de}
+\affiliation{%
+  \institution{Technical University of Munich}
+  \city{Munich}
+  \country{Germany}}
+
+\renewcommand{\shortauthors}{Duan and Mohanty}
+
+%% ============================================================
+%% ABSTRACT   (write LAST, ~150-200 words)
+%% One paragraph: problem (re-finding in tourism), what you built
+%% (3 methods from Sappelli adapted to tourism, deployed app),
+%% how you evaluated (four layers: offline, diary, user study, tests),
+%% headline result (method ordering reproduces the paper on real data).
+%% ============================================================
+\begin{abstract}
+% DRAFT (shared section) --- review jointly before submission.
+Travellers routinely save places to maps, screenshots, and notes, yet
+rarely return to them: the information is not lost but effectively
+unfindable. This is a \emph{re-finding} problem, distinct from the
+discovery task most tourism recommenders address. We adapt the
+context-aware re-finding framework of Sappelli, Verberne, and Kraaij
+(2017), originally developed for office documents, to personal tourism
+information. We implement their three methods---a content-based
+recommender (CBR), a just-in-time information-retrieval ranker (JITIR),
+and a contextual interactive-activation network (CIA)---together with a
+random baseline, and expose them through WayBack, a deployed mobile-first
+web application that re-surfaces previously saved places by current
+location and time. We evaluate on four layers: a reproducible offline
+experiment over simulated Munich tourist sessions, a one-week diary study
+on real accumulated data, a mixed-methods user study, and an automated
+test suite. Offline, the method ordering reproduces the paper: CBR
+maximises context precision and CIA is strongest at action prediction and
+catalogue diversity; a week of real use qualitatively confirms the same
+separation, and users find the moment-aware JITIR ranking most useful. No
+single method dominates every criterion, confirming that
+re-finding is best served by complementary rankers rather than a single
+model.
+\end{abstract}
+
+%% ============================================================
+%% CCS + KEYWORDS  (generate real CCS codes at https://dl.acm.org/ccs
+%% e.g. Information systems -> Recommender systems. Fill before submit.)
+%% ============================================================
+\keywords{recommender systems, information re-finding, context-aware recommendation, tourism, user study}
+
+\maketitle
+
+%% ============================================================
+%% CONTENTS  (book-style front matter: title + abstract, then a
+%% clean contents page of its own, then the body starts fresh)
+%% ============================================================
+\clearpage
+\begingroup
+  \hypersetup{linkcolor=black}% TOC entries in plain black, book-like
+  \setcounter{tocdepth}{2}%   sections and subsections, no deeper
+  \tableofcontents
+\endgroup
+\clearpage
+
+%% ============================================================
+%% 1. INTRODUCTION & MOTIVATION   [owner: shared / Joan lead]
+%% ============================================================
+\section{Introduction and Motivation}
+% TODO [Joan lead]:
+% - The problem: travelers save places (maps, screenshots, notes) but rarely
+%   return to them. This is information RE-FINDING, not discovery.
+% - Why it matters / gap: most tourism RS do discovery (suggest new places),
+%   few help you get back to what you already saved.
+% - Our grounding: Sappelli, Verberne & Kraaij (2017) studied re-finding for
+%   office documents. We move their framework to tourism.
+% - Contribution bullets (what THIS project did):
+%     (1) adapted three context-aware methods + random baseline to tourism
+%     (2) built and deployed a real app (WayBack)
+%     (3) evaluated on four layers on real dogfooded data, not seed data
+% - One short paragraph on report structure.
+
+%% ============================================================
+%% 2. RELATED WORK / BACKGROUND   [owner: shared]
+%% ============================================================
+\section{Background and Related Work}
+\label{sec:background}
+
+\subsection{Re-Finding versus Discovery}
+Most recommender systems perform \emph{discovery}: they predict items a
+user has never seen and might like. \emph{Re-finding} is the complementary
+task of returning a user to information they have already encountered and
+stored. Teevan et al.~\cite{teevan2007reretrieval} showed that a large
+fraction of web activity is re-retrieval of previously seen results rather
+than discovery of new ones, and that the two tasks have different success
+criteria: re-finding is judged by whether the \emph{known} target is
+recovered, not by novelty. In tourism this distinction is sharp. A
+traveller accumulates saved places across maps, bookmarks, tickets, and
+notes, but the act of \emph{returning} to the right saved place at the
+right moment is unsupported by the discovery-oriented tools that dominate
+the domain~\cite{borras2014tourism}. WayBack targets this gap: it never
+suggests anything outside the saved pool---every recommendation is an item
+already stored in the app---and re-surfaces that pool ranked by present
+context.
+
+\subsection{The Sappelli Re-Finding Framework}
+Our work is a direct adaptation of Sappelli, Verberne, and
+Kraaij~\cite{sappelli2017}, who studied context-aware recommendation for
+re-finding personal \emph{office} documents. Their study contributes two
+things we reuse. First, a set of three recommendation methods rooted in
+different traditions: a just-in-time information-retrieval agent (JITIR), a
+content-based recommender (CBR), and a contextual interactive-activation
+network (CIA). Second, a four-part evaluation rubric that measures
+qualitatively different notions of a ``good'' suggestion:
+
+\begin{itemize}
+  \item \textbf{Context relevance} --- does the suggestion fit the user's
+        current situation (in our case, the active place category)?
+  \item \textbf{Document relevance} --- how much does the suggested item's
+        content overlap the user's current task text?
+  \item \textbf{Action prediction} --- did the system rank the item the
+        user accesses next near the top?
+  \item \textbf{Diversity} --- across successive moments, does the system
+        vary its suggestions and cover the catalogue, or repeat itself?
+\end{itemize}
+
+The central empirical finding of the paper---that no single method wins on
+all four criteria, so the methods are complementary---is the hypothesis we
+re-test on tourism data (Section~\ref{sec:offline}).
+
+\subsection{Lineage of the Three Methods}
+Each method descends from an established line of work. The \textbf{CBR}
+method is a classical content-based recommender built on TF--IDF
+term weighting and cosine similarity~\cite{salton1988tfidf}: it represents
+each saved place as a bag-of-words vector and ranks by similarity to a
+query built from the current context. \textbf{JITIR} follows the
+just-in-time information-retrieval paradigm of Rhodes and
+Maes~\cite{rhodes2000jitir}, in which a background agent continuously turns
+the user's current context into a query and retrieves matching documents;
+we realise the retrieval step with BM25~\cite{robertson2009bm25}, the
+modern probabilistic ranking function, in place of the paper's Indri
+default. \textbf{CIA} is a spreading-activation network in the interactive-activation
+tradition of McClelland and Rumelhart~\cite{mcclelland1981iac}: context
+signals activate a middle layer of context-information nodes, which spread
+activation to saved items and back. WayBack sits within the broader field
+of context-aware recommendation~\cite{adomavicius2011context} and tourism
+recommendation~\cite{borras2014tourism}, but is distinguished by its
+re-finding objective and its faithful reproduction of the Sappelli method
+suite.
+
+%% ============================================================
+%% 3. METHODOLOGY   [owner: Sway lead on methods, Joan on design]
+%% ============================================================
+\section{Methodology}
+
+\subsection{The Three Methods and Baseline}
+\label{sec:methods}
+
+All four rankers implement a common interface. Given the user's saved pool
+(a list of items) and a \emph{context} object, a ranker returns the
+top-$k$ items, each with a numeric score and a short explanation. The
+context object is assembled per request: the client supplies the current
+latitude and longitude, an optional active place category, an optional
+free-text query, and an optional weather tag, while the current time is
+taken from the server's UTC clock at request time. The weather tag is
+consumed only by the explanation layer described below; the rankers
+themselves work from text, category, location, and time. When
+the client sends no text, the backend substitutes a time-of-day query
+(e.g.\ ``lunch food market restaurant'' between 11:00 and 14:00) derived
+from the same clock the rankers use, so the methods never disagree on the
+meal bucket near an hour boundary. Each saved item contributes a text
+document formed by concatenating its title, description, tags, and
+category. We describe each method as implemented for tourism; the mapping
+to the paper's sections and to the in-app labels is given in
+Table~\ref{tab:method-map}.
+
+\begin{table}[t]
+  \caption{Mapping of the three methods to their source in
+  Sappelli et al.~\cite{sappelli2017} and to the user-facing tab labels.}
+  \label{tab:method-map}
+  \begin{tabular}{llll}
+    \toprule
+    Method & Paper \S & In-app tab & Compare label \\
+    \midrule
+    JITIR & 5.1 & For this moment & Relevant \\
+    CBR   & 5.2 & Based on history & Similar \\
+    CIA   & 5.3 & Near you & Contextual \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsubsection{CBR --- Content-Based Recommender.}
+CBR (``Based on history'') ranks in two steps. It first
+\emph{pre-filters} the pool to items whose category equals the active
+context category, reproducing the paper's contextual pre-filtering; with no
+active category the full pool passes through. It then scores the remaining
+items by TF--IDF cosine similarity to a query document built from the
+context text; the corpus over which frequencies are computed is the
+pre-filtered pool plus the query document itself, so term weights adapt to
+the active category. For a term $t$ in document $d$ over a corpus $D$, the
+weight is
+\begin{equation}
+  w(t,d) = \mathrm{tf}(t,d)\cdot\left(\ln\frac{|D|+1}{\mathrm{df}(t)+1}+1\right),
+\end{equation}
+where $\mathrm{tf}(t,d)$ is the raw term count and $\mathrm{df}(t)$ the
+number of documents containing $t$. Items are ranked by the cosine of
+their vector with the query vector,
+\begin{equation}
+  \cos(\mathbf{q},\mathbf{d})=\frac{\sum_t q_t\,d_t}{\lVert\mathbf{q}\rVert\,\lVert\mathbf{d}\rVert}.
+\end{equation}
+When the context carries no query text, CBR falls back to a neutral
+constant score so that the category pre-filter alone determines the
+result. Because the pre-filter guarantees every surviving item matches the
+active category, CBR is by construction strong on context relevance and
+weak on cross-category diversity---a trade-off the evaluation confirms.
+
+\subsubsection{JITIR --- Just-In-Time Information Retrieval.}
+JITIR (``For this moment'') treats the whole context as a search query and
+ranks the \emph{entire} pool with no pre-filter, following Rhodes and
+Maes~\cite{rhodes2000jitir}. The query concatenates the context text and
+the active category; retrieval uses BM25~\cite{robertson2009bm25}:
+\begin{equation}
+  \mathrm{BM25}(q,d)=\sum_{t\in q}\mathrm{IDF}(t)\cdot
+  \frac{\mathrm{tf}(t,d)\,(k_1+1)}
+       {\mathrm{tf}(t,d)+k_1\!\left(1-b+b\,\dfrac{|d|}{\mathrm{avgdl}}\right)},
+\end{equation}
+with the probabilistic IDF
+$\mathrm{IDF}(t)=\ln\!\left(\dfrac{N-\mathrm{df}(t)+0.5}{\mathrm{df}(t)+0.5}+1\right)$,
+$N$ the pool size, $\mathrm{avgdl}$ the mean document length, and standard
+parameters $k_1=1.5$, $b=0.75$. Items with a non-zero score are returned in
+descending order. Because JITIR scores across the whole pool rather than
+inside one category, it trades some context precision for the ability to
+surface a strongly matching item from an adjacent category---exactly the
+``for this moment'' behaviour its label promises.
+
+\subsubsection{CIA --- Contextual Interactive Activation.}
+CIA (``Near you'') is the most involved method: a three-layer
+spreading-activation network in the interactive-activation
+tradition~\cite{mcclelland1981iac}, rebuilt per request so it stays in
+sync with the pool. The layers are \emph{event} (the current context),
+\emph{context-information} nodes, and \emph{items}. Context-information
+nodes are extracted from each saved item and come in four kinds: topic
+nodes (one per text token), a category node, a location node obtained by
+snapping the coordinates to a $\sim$0.005$^\circ$ grid cell so that nearby
+places share a node, and a time-of-day node when the item has an event
+time. Each item is linked to the context nodes it generates.
+
+Activation follows Grossberg's bounded update rule. With inhibition set to
+zero (the paper uses excitation only), one update of an activation $a$
+under excitatory input $e$ is
+\begin{equation}
+  \Delta a = (a_{\max}-a)\,e - \delta\,(a-a_{\mathrm{rest}}),
+  \qquad
+  a \leftarrow \mathrm{clip}\big(a+\Delta a,\,a_{\min},\,a_{\max}\big),
+\end{equation}
+with bounds $a_{\min}=-0.1$, $a_{\max}=1.0$, rest $a_{\mathrm{rest}}=-0.1$,
+and decay $\delta=0.1$. Connection weights follow the paper's Table~3
+normalisation: a context node excites an item in inverse proportion to its
+number of out-links, and an item excites a context node in inverse
+proportion to the size of its own context set,
+\begin{equation}
+  w_{c\rightarrow i}=\frac{1}{|\{\text{items linked to }c\}|},
+  \qquad
+  w_{i\rightarrow c}=\frac{1}{|\text{context}(i)|}.
+\end{equation}
+The current context seeds the context layer: each query token carries an
+equal share of one unit of activation (tokens absent from the
+item-derived vocabulary are discarded, so at most one unit reaches the
+topic nodes), and the active category, location cell, and time bucket each
+contribute a full unit. The network then runs for ten
+iterations. Each iteration performs a forward pass, in which every item
+accumulates $e_i=\sum_{c\in\text{context}(i)} a_c\,w_{c\rightarrow i}$, and
+a backward pass (a pseudo-relevance-feedback step) in which every context
+node accumulates $e_c=\sum_{i} a_i\,w_{i\rightarrow c}$ plus a re-injection
+of its original event activation, so the seed signal persists rather than
+decaying away. The final item activation is its score; like JITIR, CIA
+returns only items with strictly positive activation, so an item with no
+matching context links is dropped rather than ranked at its resting
+level. Because activation
+reaches an item through \emph{several} context paths at once---topic,
+category, location, and time---CIA is the method most able to reward an
+item that is coherent with the whole situation, which is why the paper and
+our results find it strongest at predicting the next action and at
+covering the catalogue.
+
+\subsubsection{Random Baseline.}
+The random baseline returns a uniform sample of $k$ items with a constant
+score. It lives only in the offline harness---the serving API exposes the
+three context-aware methods---and is not a serious recommender but a
+yardstick: it marks the floor that any context-aware method must clear,
+and, as Section~\ref{sec:offline} discusses, it also exposes which metrics
+are sensitive to pool size rather than to ranking quality. Each instance
+owns a seeded random generator so that multi-seed runs do not share state.
+
+\subsubsection{Explanation Layer.}
+Independently of the ranker, the backend attaches a human-readable reason
+to every recommendation. A rule function inspects the real item data---its
+distance from the user, how long ago it was saved, its view count, whether
+it is an indoor category, and the current weather---and emits a compact
+reason code (for example \texttt{matches\_weather\_indoor} on a rainy day,
+\texttt{nearby\_frequent\_view} for a close, often-opened place, or
+\texttt{saved\_long\_ago} for a distant, stale save). The frontend maps
+each code to display text, and the method's own scoring detail (similarity,
+BM25 value, or activation) is carried alongside for transparency. This
+keeps the \emph{why} of a recommendation grounded in observable facts
+rather than in the opaque score.
+
+\subsection{System Design and Interaction}
+\label{sec:system-design}
+
+Section~\ref{sec:methods} describes what the rankers compute; this section
+describes the interaction design built around them. A single constraint
+applies to every surface of the application: it never displays a place the
+user has not saved, so the saved pool is the entire catalogue. This
+constraint carries a design consequence. A discovery system can compensate
+for a weak ranking by introducing new items, whereas a re-finding system
+cannot, and the interface must therefore make the provenance of each item
+visible and the ranking itself credible.
+
+\paragraph{Save.}
+Re-finding presupposes a prior save, and saves typically happen in
+transit, so the flow is designed to impose minimal friction. A place enters the pool in one of two ways: through
+a search field, which queries an OpenStreetMap geocoder and fills the save
+form from the result, or through a pin drop on the map, which always works
+and does not depend on geocoder coverage (Section~\ref{sec:diary}). The
+save form carries a free-text note alongside the name, following
+Sappelli et al.~\cite{sappelli2017}, who treat a personal annotation as a
+contextual cue that a name alone does not provide. The rankers consume this
+cue directly, since the note text enters the item document that CBR, JITIR,
+and CIA score against. The interface therefore makes the note easy to add
+at save time and, as the diary study showed to be necessary, editable after
+saving, because the relevance of a place often becomes clear only later.
+
+\paragraph{Re-find.}
+The map is the home surface. Saved places appear as category markers, and
+above them sits a row of three tabs which are the three rankers of
+Section~\ref{sec:methods}. The app opens on ``For this moment'' (JITIR),
+the moment-aware ranking, rather than on the highest-precision one, a
+default the offline and user-study layers both support
+(Sections~\ref{sec:offline} and~\ref{sec:userstudy}). Switching tabs
+re-ranks the same pool, so the user sees the methods disagree over items
+they already own. Selecting a place opens a detail panel with the reason
+for its rank, its distance and time signals, and an entry point to
+navigation.
+
+\paragraph{Why.}
+Every recommendation carries a reason, produced by the rule-based
+explanation layer of Section~\ref{sec:methods} and rendered as a short
+sentence with a strength bar. The strength bar presents a coarse level rather than a numeric score,
+because method scores are not comparable across rankers: a cosine
+similarity, a BM25 value, and a network activation lie on different scales,
+and displaying the raw numbers side by side would invite a comparison the
+numbers cannot support. Each reason is grounded in facts the user can
+verify independently, such as distance, time of day, weather, and how long
+ago the place was saved.
+
+\paragraph{Compare.}
+A separate compare view puts the three rankings side by side on the same
+pool, with each column normalised within itself and the raw score moved to
+a tooltip. The compare view is the only surface where the paper's method terminology
+appears in the product, and the naming is layered accordingly. In the map
+and the detail panel the tabs read ``For this moment'', ``Based on
+history'', and ``Near you'', which describe the result the user receives.
+In the compare view the columns read ``Similar'', ``Relevant'', and
+``Contextual'', with the corresponding Sappelli section reference as a
+small tertiary label (Table~\ref{tab:method-map}). The two layers serve
+different audiences: end users receive descriptive labels, while
+technically interested readers can trace each column to its method. The
+user study confirms that the labels are legible and also indicates the
+limit of surface labelling, since participants read ``Near you'' as a
+distance sort although it is driven by context activation
+(Section~\ref{sec:userstudy}).
+
+\paragraph{Plan.}
+The day plan assembles saved places into five time slots, from a morning
+cafe through to an evening restaurant or bar. The plan is itself a
+re-finding surface, in that it arranges the saved pool rather than
+generating new suggestions. A slot with no matching place is omitted rather
+than filled, so a sparse pool yields a shorter plan rather than an
+incorrect one.
+
+\paragraph{The proactive channel.}
+One recommendation is pushed rather than pulled: a banner over the map
+surfaces a single place that fits the present context. Because unsolicited
+recommendations risk becoming interruptions, the channel is bounded.
+Dismissing the banner silences it for 45 minutes or until the user moves
+more than 500 metres, on the assumption that a dismissal expresses
+disinterest in the moment rather than in the specific item. Places outside
+their opening hours are demoted rather than removed, and the detail panel
+states the reason, because a re-finding system serves intents the user
+already holds, including places saved for a future visit.
+
+These decisions are carried by a visual system, Editorial Paper, whose
+tokens, typography, and governance are described in
+Section~\ref{sec:frontend}.
+
+
+%% ============================================================
+%% 4. IMPLEMENTATION   [owner: Joan frontend, Sway backend]
+%% ============================================================
+\section{Implementation}
+
+\subsection{Frontend and Design System}
+\label{sec:frontend}
+
+The client is a single-page React 19 application built with Vite and routed
+with \texttt{react-router-dom}. The map surface uses \texttt{react-leaflet}
+over Leaflet, and icons come from \texttt{lucide-react}. The codebase is
+organised around two page components, the map page and the trip page that
+hosts the day plan, together with a shared tab bar, and all chrome styling
+is consolidated into a single global stylesheet. We use no CSS framework
+and no component library; styling is hand-written CSS on top of a token
+layer, which keeps every visual decision explicit in our own code rather
+than inherited from a framework's defaults. This control matters because
+the visual language carries part of the design argument described in
+Section~\ref{sec:system-design}.
+
+\begin{figure}[!t]
+  \centering
+  \includegraphics[width=0.58\linewidth]{ui_two_panel.png}
+  \caption{Left: the map surface with the three method tabs and the
+  recommendation sheet; saved places appear as desaturated category markers
+  on Positron tiles. Right: the compare view, where the three rankings sit
+  side by side under the labels Similar, Relevant, and Contextual, each
+  column normalised within itself.}
+  \Description{Two mobile screenshots of WayBack in light mode: the map
+  view and the three-column compare view.}
+  \label{fig:ui}
+\end{figure}
+
+
+The design system is called Editorial Paper. It is specified in a versioned
+document, \texttt{docs/DESIGN.md}, which serves as the source of truth for
+every visual and interaction decision in the frontend. The palette is a
+cream paper family for surfaces (\texttt{--paper}, \texttt{--paper-soft},
+\texttt{--paper-warm}), ink for text and structure (\texttt{--ink},
+\texttt{--ink-soft}, \texttt{--rule}), and a single warm red accent
+(\texttt{--pin}). The type stack pairs Fraunces for display, Public Sans
+for body and interface copy, and JetBrains Mono for numerals such as
+distances, times and scores, on a fixed scale from 12 to 48 pixels. The ten
+category colours survive only as desaturated map-marker fills and are
+banned from the chrome, so category distinction in the interface comes from
+icon, label and typography rather than colour blocks. The map surface is integrated into the same palette, with CartoDB Positron
+tiles in light mode. A warm dark counterpart, deep cocoa surfaces with
+CARTO Dark Matter tiles, is toggled through a \texttt{data-theme} attribute
+on the document root; the choice persists in local storage and is applied
+before React mounts, so the first paint already uses the correct theme.
+
+Two frontend features supply context signals the recommender consumes.
+Place search uses Photon, a free OpenStreetMap geocoder, debounced at
+300~ms and biased towards the user's position, with OSM tag pairs mapped
+onto our ten categories and falling back to \emph{attraction} when a tag is
+unrecognised. Geolocation is opt-in through \texttt{watchPosition}; until
+the user grants permission, Munich Hauptbahnhof serves as the default frame
+of reference and as the permanent fallback on denial.
+
+Treating the design system as an artifact rather than a style guide
+required enforcement. We wrote \texttt{design-check}, a static checker that
+scans the frontend source and exits non-zero on any violation of the
+anti-pattern bans that can be detected reliably: em dashes in user-facing
+copy, the generic placeholder avatar, and the default drag handle. Bans
+that cannot be distinguished from their sanctioned replacement by a static
+marker are excluded from the checker rather than risking false
+positives. The checker runs on
+every push through GitHub Actions alongside the frontend unit tests
+(Section~\ref{sec:tests}). \texttt{DESIGN.md} also carries a decision log,
+which records reversals as well as decisions: the dark counterpart above
+was removed and later re-introduced, and one anti-pattern ban was withdrawn
+when the M2 walkthrough showed the banned element was doing useful
+explanatory work. Recording reversals keeps the document an accurate account of the
+system's history rather than an idealised one.
+
+
+
+\subsection{Backend and Deployment}
+\label{sec:backend}
+
+The backend is a Flask service over an SQLAlchemy data model. Two tables
+carry the domain. An \texttt{Item} stores a saved place---title,
+description, item type (bookmark, ticket, map pin, note, or calendar
+event), category, coordinates, address, optional event time, free-text
+tags---plus the behavioural fields the serving layer reads:
+\texttt{created\_at}, which the explanation layer turns into a
+months-since-saved signal, and \texttt{last\_viewed\_at} with
+\texttt{view\_count}, the access-pattern record maintained by the view
+endpoint below. The rankers themselves score on text, category, location,
+and event-time context (Section~\ref{sec:methods}); the access-pattern
+record feeds the explanation layer and is kept clean for a future
+access-based ranking extension.
+A \texttt{Feedback} row records a useful / not-useful judgement on a
+recommendation together with the method and a snapshot of the context in
+which it was given, so that per-method success rates can be aggregated for
+evaluation.
+
+\paragraph{Request flow.}
+A recommendation request is handled in four stages. The route validates the
+query parameters (coordinates are required; \texttt{method} defaults to
+CIA for bare API calls, though the app UI always sends a method explicitly
+and opens on the JITIR tab) and assembles the context object described in
+Section~\ref{sec:methods}. The selected ranker scores the pool. A scoring
+stage then augments each result with derived facts---haversine distance to
+the user and months since the item was saved---and the explanation layer
+turns those facts into a reason code. Finally the item is serialised to the
+frontend's camelCase contract, with times as Unix milliseconds and
+distances in metres. The REST surface follows an agreed contract: a
+read-only \texttt{GET /saved-items} and \texttt{GET /saved-items/:id};
+create, update (notes), and delete on saved items;
+\texttt{GET /recommendations} with the \texttt{method} and \texttt{top\_k}
+parameters (default five) plus the optional context
+parameters---category, free-text query, weather---described in
+Section~\ref{sec:methods}; and \texttt{POST /feedback} with an aggregate
+\texttt{GET /feedback/stats}, which returns per-method useful and
+not-useful counts and the derived success rate. The contract's
+\texttt{userId} parameter is accepted but not enforced: the prototype is
+deliberately single-user for the study, and authentication is an
+explicitly deferred item in the API contract.
+
+\paragraph{Two data-integrity decisions driven by re-finding.}
+Two endpoints carry design choices that exist specifically to keep the
+recorded behavioural signals honest. First, recording a view is separated
+from reading an item: \texttt{GET /saved-items/:id} is a pure read with no
+side effect, while a deliberate open is posted to
+\texttt{POST /items/:id/view}, which increments the view count only if the
+last view was more than ten minutes ago. Without this split, an incidental
+list refresh or a polling client would inflate \texttt{view\_count} and
+corrupt the access-pattern record that drives the ``frequently viewed''
+explanations and that any future access-based ranker would consume.
+Second, the create endpoint de-duplicates: saving a place whose name
+matches an existing item (case-insensitively) within fifty metres returns
+HTTP~409 with the existing item, rather than a silent duplicate; saves
+without coordinates skip the check. This was added after dogfooding
+produced duplicate saves that polluted the pool, the rankings, and the day
+plan (Section~\ref{sec:diary}).
+
+\paragraph{Deployment and the persistence migration.}
+The API is deployed on Render (started as the seed script followed by
+Gunicorn) and the frontend on Vercel; allowed CORS origins are
+configurable by environment variable so the production frontend can be
+permitted without code changes. The seed is a hand-curated pool of thirty
+Munich places spanning the ten place categories, which gives every ranker
+and the day plan a realistic starting library; descriptions are baked into
+the seed once rather than generated per request, so no live model call is
+made on the serving path. The most consequential backend change during the
+project was forced by real use. The service initially ran on SQLite on
+Render's free tier, whose disk is ephemeral: every deploy wiped the
+database and reset the pool to seed data. During the diary study this
+destroyed a night's worth of real saves and, because re-finding is
+evaluated on \emph{accumulated personal} data, invalidated that day's
+evaluation. We migrated to a managed Neon Postgres instance and made the
+seed script idempotent---it seeds only when the table is empty---so the
+saved pool now survives deploys and cold starts. Two smaller production
+fixes came from the same period: the connection layer normalises legacy
+\texttt{postgres://} URLs and enables pool pre-ping, because Neon's
+serverless Postgres drops idle connections (without \texttt{DATABASE\_URL}
+the service falls back to local SQLite for development and tests), and the
+feedback timestamp column was widened to a 64-bit integer after
+unix-millisecond values overflowed the default integer type and returned
+server errors.
+
+%% ============================================================
+%% 5. EVALUATION AND RESULTS   [LONGEST SECTION]
+%% This is the strongest section. Four subsections = your four layers.
+%% ============================================================
+\section{Evaluation and Results}
+% One intro paragraph (shared): four layers, on REAL dogfooded data.
+
+We evaluate WayBack on four complementary layers, each answering a
+question the others cannot. An \emph{offline experiment}
+(Section~\ref{sec:offline}) compares all four methods on the four paper
+criteria under controlled, reproducible conditions. A one-week
+\emph{diary study} (Section~\ref{sec:diary}) checks whether the same
+behaviour holds on real, accumulated data rather than on the balanced seed
+pool. A \emph{user study} (Section~\ref{sec:userstudy}) brings in people
+who did not build the app. An automated \emph{test suite}
+(Section~\ref{sec:tests}) guards the metric implementations and the
+determinism the offline layer relies on. A recurring theme is that results
+on the seed pool and results on real data can diverge, so we report both
+and treat agreement across layers as the strongest evidence.
+
+\subsection{Offline Evaluation}
+\label{sec:offline}
+
+\paragraph{Protocol.}
+The offline experiment compares the four rankers on the six metrics that
+operationalise the paper's four criteria (Table~\ref{tab:metric-map}). We
+drive the methods with a session simulator: a session visits eight of ten
+well-known Munich hotspots, sampled without revisits on a fixed simulated
+date, and each event carries a noisy location, an advancing clock (30--90
+minutes between stops), the hotspot's category, and a text query equal to
+the current place name. Sessions are seeded so that locations, categories,
+and inter-stop intervals are reproducible. Because no clicks are
+simulated, action prediction uses a proxy target: the ``next access'' is
+defined as the first stored item whose category matches the next stop's
+category. Two metric conventions matter for reading the table.
+Precision@10 divides by the number of items \emph{returned} (at most ten),
+not by ten, so a method that returns a short, fully relevant list is not
+penalised for pool sparsity. RBO is the truncated form without the
+extrapolation term, at $p=0.9$; on this scale two identical top-10 lists
+score about $0.65$, so the reported values are comparable to each other
+but not to standard RBO magnitudes. The reported run uses seeds $0$--$9$
+(\texttt{--seeds 10}; the script default is five), twenty sessions per
+seed, and eight events per session, with a cutoff of $k=10$, over the
+fixed catalogue of thirty seeded Munich places; per-seed metrics are
+averaged and we report the mean and standard deviation across seeds. The
+runner writes per-seed and summary CSV/JSON files, included with the
+report sources in the repository, and the table regenerates by re-running
+the experiment script against the seeded database.
+
+\begin{table}[t]
+  \caption{The four evaluation criteria of Sappelli et
+  al.~\cite{sappelli2017} and the metric used for each. ROUGE-N is an
+  F1-style bigram set overlap~\cite{lin2004rouge}; RBO~\cite{webber2010rbo}
+  (truncated, $p{=}0.9$) is computed between consecutive recommendation
+  lists.}
+  \label{tab:metric-map}
+  \begin{tabular}{lll}
+    \toprule
+    Criterion & Metric & Better \\
+    \midrule
+    Context relevance  & Precision@10                 & higher \\
+    Document relevance & ROUGE-N ($n{=}2$)~\cite{lin2004rouge} & higher \\
+    Action prediction  & Success@1, Success@10        & higher \\
+    Diversity          & RBO (consecutive lists)      & lower  \\
+                       & Unique ratio (catalogue)     & higher \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table*}[t]
+  \caption{Offline results: mean $\pm$ standard deviation across ten seeds
+  (20 sessions $\times$ 8 events each, $k{=}10$). Bold marks the best
+  \emph{context-aware} method per column; the random baseline is a floor,
+  not a competitor. Random's high Success@10 and its RBO/Unique values are
+  small-pool artefacts, discussed in the text.}
+  \label{tab:offline}
+  \begin{tabular}{lcccccc}
+    \toprule
+    Method & Precision@10 & ROUGE-N & Success@1 & Success@10 & RBO~$\downarrow$ & Unique ratio \\
+    \midrule
+    CBR    & \textbf{1.000 $\pm$ .000} & .0045 $\pm$ .0003 & .0121 $\pm$ .0122 & .1107 $\pm$ .0243 & \textbf{.0261 $\pm$ .0055} & .0318 $\pm$ .0004 \\
+    JITIR  & 0.837 $\pm$ .006          & .0037 $\pm$ .0003 & .0121 $\pm$ .0122 & .1336 $\pm$ .0238 & .0359 $\pm$ .0048          & .0288 $\pm$ .0005 \\
+    CIA    & 0.636 $\pm$ .020          & \textbf{.0047 $\pm$ .0003} & \textbf{.0307 $\pm$ .0095} & \textbf{.1714 $\pm$ .0391} & .0598 $\pm$ .0119 & \textbf{.0403 $\pm$ .0017} \\
+    \midrule
+    random & 0.150 $\pm$ .007          & .0007 $\pm$ .0001 & .0336 $\pm$ .0165 & .3186 $\pm$ .0384 & .1027 $\pm$ .0090          & .0187 $\pm$ .0000 \\
+    \bottomrule
+  \end{tabular}
+\end{table*}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{plot_precision_at_10.png}
+  \caption{Context relevance (Precision@10) by method. The three
+  context-aware methods order exactly as in the paper and all clear the
+  random floor by a wide margin.}
+  \label{fig:precision}
+\end{figure}
+
+\paragraph{Context relevance reproduces the paper.}
+On Precision@10 (Table~\ref{tab:offline}, Figure~\ref{fig:precision}) the
+methods order CBR ($1.000$) $>$ JITIR ($0.837$) $>$ CIA ($0.636$) $\gg$
+random ($0.150$). CBR's perfect precision is structural, for two reasons:
+its category pre-filter admits only items of the active category, so every
+returned item matches by construction, and the returned-items denominator
+means a category holding fewer than ten stored places still scores $1.0$
+rather than being penalised for the short list. The $1.000$ should
+therefore be read as ``everything CBR shows is in-category'', not ``CBR
+always fills ten relevant slots''. JITIR, which ranks the whole pool by
+text match, sits close behind mainly because its query explicitly appends
+the context category as a search term and every item document embeds its
+own category, so the category matches directly as a BM25 term, with place
+names and descriptions adding further category-indicative text. CIA, which
+reaches items through location and time
+paths as well as topic and category, deliberately admits well-situated
+items from adjacent categories and so scores lower on this narrow
+criterion. Every context-aware method beats the random floor by four to
+seven times, confirming that the ranking signal is real.
+
+\paragraph{Action prediction: CIA leads among real methods.}
+On Success@1 and Success@10, CIA is the strongest context-aware method
+($0.031$ and $0.171$), clearly ahead of CBR and JITIR, reproducing the
+paper's finding that CIA is best at predicting the next access. Under the
+proxy definition above the target is always the same catalogue item for a
+given category, which is also why CBR and JITIR---both driven by the
+category term---record identical Success@1. The random
+baseline's \emph{higher} Success@10 ($0.319$) is not a quality result but a
+small-pool coverage artefact: with only $\sim$30 items and $k=10$, a
+uniform sample includes any particular target with probability
+$\approx 10/30 \approx 0.33$, which is essentially the number observed. The
+context-aware methods concentrate their ten slots on relevant items, so a
+specific next target is not guaranteed to appear; random spreads its slots
+uniformly and is rewarded by a permissive top-10 cutoff on a tiny
+catalogue. Read correctly, the metric says CIA predicts the next action
+best among methods that actually rank.
+
+\paragraph{Diversity: catalogue coverage versus temporal churn.}
+The two diversity metrics tell complementary stories. On the unique ratio
+(what fraction of all suggestions across a run are distinct) CIA is highest
+among all methods ($0.040$) and all three context-aware methods beat random
+($0.019$), supporting the paper's claim that CIA is the most diverse in
+catalogue coverage. RBO, the overlap between \emph{consecutive} lists,
+where lower means more churn, is lowest for CBR ($0.026$): because CBR
+swaps its entire result set whenever the context category changes between
+stops, its consecutive lists overlap least. Random has the \emph{highest}
+RBO ($0.103$) precisely because it ignores context---two uniform draws from
+the same fixed pool overlap by a stable amount, so a context-blind method
+churns \emph{less} with context than the context-aware ones. RBO here thus
+measures responsiveness to context as much as diversity, and we read it
+alongside the unique ratio rather than alone.
+
+\paragraph{Document relevance.}
+ROUGE-N is small in absolute terms for all methods (CIA and CBR
+$\approx 0.0045$, JITIR $0.0037$, random $0.0007$) because the ``documents''
+are short place descriptions and the target text is a single place name, so
+bigram overlap is inherently low. The \emph{relative} ordering is
+nonetheless informative: the context-aware methods carry five to seven
+times the overlap of random, and CIA and CBR edge out JITIR.
+
+\paragraph{Takeaway.}
+No single method wins all six columns: CBR owns context precision, CIA owns
+action prediction and catalogue diversity, and JITIR sits between them.
+This is exactly the complementarity Sappelli et al.\ report, now reproduced
+on tourism data. It is also the design justification for shipping all three
+methods as switchable tabs and defaulting to the moment-aware JITIR ranking
+rather than to the highest-precision one---a choice the user study
+(Section~\ref{sec:userstudy}) independently supports.
+
+\subsection{Diary Study}
+\label{sec:diary}
+
+The offline evaluation runs on a simulator, and no single session captures
+the app over a week of real use, on a pool that grows as places are saved,
+under changing weather. The diary study covers that gap. Both authors used
+the deployed app in real Munich contexts over one week in June 2026 and
+logged each observation at the moment it happened, which keeps the records
+close to the moment of use rather than reconstructed afterwards. The log
+holds 48 entries, each tagged by type, namely bug, interaction,
+recommendation quality, or idea, and by severity where it applies. The
+places behind these entries are the ones we saved during the week, not the
+seed pool, which makes the diary an evaluation on real input. Early in the
+week we lost the saved data to ephemeral storage on the hosting tier,
+which reset the pool to seed data on every deploy. After the backend moved
+to a persistent database, the pool survived deploys, and the entries
+discussed here come from that later period.
+
+\paragraph{The methods separate on real data.}
+On a real pool of about twelve saved places, the three tabs produced
+visibly different rankings. ``Based on history'' (CBR) separated from the
+other two, while ``For this moment'' (JITIR) and ``Near you'' (CIA)
+remained similar. This matches the offline result, where CBR is the most
+distinct of the three on precision. The day plan performed correctly on
+the same pool: it generated a coherent Munich day, with a museum in the
+morning, lunch and dinner at restaurants, and plausible walking distances.
+The behaviour we designed for, and measured offline, appeared on real
+input.
+
+\paragraph{Context signals in real use.}
+The time-of-day and weather signals responded appropriately to context. At
+lunchtime ``For this moment'' recommended a market lunch with a clear
+reason string. On a rainy day all three tabs favoured indoor places and
+the airport train dropped to the bottom of the ranking. We also observed a
+clear-to-rain change across two days, where the proactive banner moved
+from an outdoor museum toward an indoor cafe. We interpret this observation
+cautiously, since the newest saved items appear on both days, so recency is
+a confounding factor, and a cafe is indoor in any weather; a more reliable
+test would measure whether a specific outdoor place drops in the rain,
+which we defer to a larger study. One explanation gap also surfaced here,
+and we carried it into the user study: the ``Near you'' tab is driven by
+context activation rather than distance, yet the prominent distance on each
+row makes it read as a proximity ranking, and the order often does not
+follow distance (Section~\ref{sec:userstudy}).
+
+\paragraph{The day plan depends on category mix, not pool size.}
+The day plan is built from five time slots, each tied to a set of place
+categories, namely a cafe in the morning, a museum or landmark before noon,
+a restaurant at lunch, a cultural stop or park in the afternoon, and a
+restaurant or bar in the evening. A slot with no matching place is omitted,
+so a sparse pool produces a shorter plan rather than failing. Early in the
+week, however, a pool of eleven saved places produced no plan. The reason
+was not the count but the mix: those saves fell into categories the plan
+does not use, such as shopping and transport, partly because the place
+search had miscategorised several of them. The plan succeeded once the pool
+contained the required categories. The seed pool never exposed this, since
+its categories were balanced by design; only real, unbalanced saving made
+the dependency visible.
+
+\paragraph{The diary as a design loop.}
+The diary was not only a record of what happened but a cycle of
+observation, decision, and revision, run inside the same week, and several
+design choices were determined through real use rather than in the
+abstract. Two concern the proactive banner. A night session established how
+the system treats closed places: a recommender built around what is open
+now would hide a museum at 22:30, but re-finding serves an intent the user
+already holds, so we keep out-of-hours places in the ranking, demoted
+rather than removed, and indicate the timing explicitly in the detail
+panel, where the explanation reads ``Outside museum opening hours'' with a
+low strength bar. A second session showed the banner reappearing
+immediately after dismissal, which undermined the restraint a proactive
+channel requires, so we made a dismissal silence the whole banner for 45
+minutes or until the user moves more than 500 metres, on the principle that
+a dismissal concerns the moment and not the single item. A third change
+addressed how users read the methods: the compare view first showed each
+method's raw score, but those scores are not comparable across the three
+columns, so we replaced them with per-column strength bars normalised
+within each column and moved the raw value to a tooltip, which lets the
+interface show the disagreement between methods rather than caption it. On
+the interaction side, swiping between saved places did not track the
+pointer because every frame re-rendered the whole panel, so we moved the
+drag to a direct transform write per frame, leaving React to handle only
+the settle on release. Most fixes and decisions of this kind were resolved
+before the user study, so its participants used a build the diary had
+already stabilised.
+
+\paragraph{The personal-note cue.}
+Sappelli et al. treat a personal note as a contextual cue for re-finding,
+and our design carries a note field for the same purpose. In real use the
+field was hard to reach, because saving from a search result skipped the
+form and a note could not be edited after saving. The diary caught this,
+and we then made search results fill the save form and allowed notes to be
+edited later, which restored the cue the method depends on. Here the diary
+served less to find defects than to protect a design element grounded in
+the paper.
+
+\paragraph{Limitations.}
+Three limits surfaced and we state them plainly. Re-finding begins with
+saving a place, and saving depends on the place search finding it. Our
+search, which uses Photon over OpenStreetMap, missed venues frequently: it
+did not return a cafe we were standing inside, it missed a restaurant
+located within a hotel, and it failed to surface a well-known retail store
+while returning the company's corporate offices instead. It also returned
+far-away places that share a name, which once led to a saved place
+thousands of kilometres from Munich. The fallback is a manual pin-drop on
+the map, which always works and does not depend on the geocoder. Transit
+routing is the second limit: it always starts from Munich Hauptbahnhof,
+because the transit data is hand-curated around a single origin, and when
+the user is elsewhere the app indicates this with a brief message and a
+hint rather than a silent wrong route. Third, the opening windows that
+drive the time-of-day signal are defined per category rather than per
+venue, so the timing is approximate. Arbitrary-origin routing and per-venue
+hours are future work.
+
+The diary study shows the core behaviour holding on real, accumulated data.
+The methods separate, the context signals respond to context, and the day
+plan reads as a realistic itinerary once the saved pool carries the
+categories it needs. The week also worked as a design loop, in which real
+use both corrected defects and determined design choices before the user
+study ran. The edges it marks, namely place-search coverage, the category
+dependency of the plan, the fixed routing origin, and the gap between the
+``Near you'' label and its algorithm, are the items we carry into the
+conclusion as future work.
+
+\subsection{User Study}
+\label{sec:userstudy}
+
+We ran a user study to test how the app performs with people who were
+not involved in building it. The study combined two methods. A
+structured online survey collected ratings and short written answers,
+and think-aloud sessions let us watch participants use the app and
+narrate their reasoning. The survey was completed by five participants,
+and think-aloud sessions were conducted with six. We use both because
+they answer different questions: the survey shows where opinion sits
+across people, and the think-aloud shows why a given reaction happens.
+
+\subsubsection{Method and Instrument}
+
+The survey had three parts. The first asked about the participant's
+travel and saving habits, so that we could place each later rating in
+context. The second asked participants to rate the app on a set of
+statements, using a five-point scale from strongly disagree to strongly
+agree, together with one multiple-choice question on which recommendation
+tab they found most useful. The third part was open text, where
+participants described what stood out, what was confusing, and what they
+would change. The think-aloud sessions followed a fixed set of tasks:
+save a place, re-find it later, read the explanation attached to a
+recommendation, and open the day plan. Participants spoke their thoughts
+aloud while we observed without guiding them.
+
+A study with five survey responses cannot support statistical claims, so
+we designed it to be read as directional evidence rather than as
+measurement. Three choices keep that reading honest. First, we report
+every individual response rather than aggregated percentages, so the
+size of the sample stays visible (Figure~\ref{fig:userstudy}). Second,
+we triangulate across three sources, the survey, the think-aloud
+sessions, and the week-long diary study in Section~\ref{sec:diary}; a
+finding that appears in more than one source carries more weight than any
+single number. Third, the background questions let us check that
+participants belong to the population the app is built for, namely people
+who save places and do not return to all of them. A rating only means
+something if it comes from someone who has the problem the app addresses.
+
+\subsubsection{Participants}
+
+We recruited through TUM student channels and word of mouth. Not all
+participants were enrolled at TUM, and we recruited across a range of
+academic backgrounds on purpose, including computer science, finance,
+design, and biology, with home regions across the Americas, Europe, and
+Asia. Re-finding saved places is a general travel behaviour, not a habit
+specific to one field, so we did not want feedback to come from a single
+cohort of computer science students. Participants also differed in how
+often they travel and in how well they know Munich.
+
+The background questions confirmed that the sample fit the target
+population. All five participants save places while travelling, and three
+do so often or on almost every trip. Four of the five return to only some
+of the places they save, and none return to all of them. This is the
+exact gap WayBack is built to close. Familiarity with Munich was split,
+with three participants who had never visited and two who live or have
+lived in the city, which gave us reactions from both newcomers and
+residents.
+
+\subsubsection{Survey Results}
+
+\begin{figure}[!ht]
+  \centering
+  \includegraphics[width=\linewidth]{userstudy_dotplot_final.png}
+  \caption{Survey responses (n=5). Each dot is one participant on a
+  five-point scale. We show every response rather than aggregated
+  percentages to keep the small sample visible.}
+  \label{fig:userstudy}
+\end{figure}
+
+The rating statements covered the recommendations, the per-item
+explanations, the proactive banner, the day plan, and the app's overall
+usability. Figure~\ref{fig:userstudy} shows the full distribution. We use
+a dot plot rather than aggregated bars so that each of the five responses
+stays visible. With a sample this small, a percentage such as ``80\%
+agreed'' would overstate the evidence, while showing every response keeps
+the reading honest.
+
+The strongest result concerned re-finding itself. The statement that the
+app could help users reconnect with places they had saved and forgotten
+received the highest ratings, clustered at agree and strongly agree.
+Items on relevance, the per-item explanations, and the day-plan view all
+landed at agree or higher. The one weak point was first-run familiarity.
+A single participant disagreed that the app felt familiar and easy to use
+right away, the only disagreement in the survey, and it points at the
+same issue the interviews surfaced, namely that the app does not explain
+its own purpose on first open.
+
+One multiple-choice question asked which recommendation tab gave the most
+useful suggestions. Three of the five chose ``For this moment'', the
+JITIR method, while ``Based on history'' and ``Near you'' each drew one,
+and no participant felt the three were about the same. This is a soft
+signal rather than a result, but it is informative next to the offline
+numbers. Offline, ``Based on history'' (CBR) records the highest
+precision, yet users named ``For this moment'' as the most useful tab.
+The two layers disagree on which method wins. Precision measures how well
+a method recovers a known target, while usefulness in the moment depends
+on timing and current context, which is what JITIR is built to serve. A
+high offline score does not guarantee perceived usefulness, and this gap
+supports the paper's choice of JITIR as the default.
+
+\subsubsection{Interview Findings}
+
+The think-aloud sessions allowed us to examine the same questions from
+the perspective of recommender-system evaluation. Four dimensions
+recurred across participants: explainability, utility, scalability, and
+trust.
+
+\paragraph{Explainability.}
+With three competing rankers, the basic question is whether users can
+distinguish the methods. They could. Participants interpreted all three
+method labels correctly without prompting. A nuance emerged around the
+``Near you'' label, which several participants read as pure distance. In
+our system this tab is driven by context activation (the CIA method),
+not by distance alone. The labels are therefore legible at the surface,
+but the behaviour of the underlying algorithm is not fully transparent
+to users. This gap between a readable label and an understood mechanism
+is a useful target for future explanation design. One participant also asked for a way to tell apart saved places that share a name, which is the need our personal-note field is meant to serve. A user arriving at that need independently is a small confirmation that the note-versus-name cue from Sappelli et al. addresses a real problem and not only a hypothetical one.
+
+\paragraph{Utility.}
+Most participants found the recommendations useful. One participant
+articulated the value plainly. When they cannot relocate a place they
+saved, they tend to give up and settle for an alternative, and a
+recommendation tied to the current moment would instead resurface a
+saved place that fits the time of day. A second response was more
+critical and, for that reason, more instructive. Re-finding serves an intent the user already holds. It does not plan the trip, nor does it generate new interests. This is precisely the tension Sappelli et al. identify: re-finding is a task distinct from recommendation-as-discovery, and its value is lower in salience even when it is real. The response confirms that we targeted the right task, and that the task is narrow by design.
+
+\paragraph{Scalability.}
+Two participants independently raised the same concern. Once a user
+saves a large number of places, they want organisation and routing, such
+as folders and time-aware planning, rather than a three-way ranking of
+the entire pool. This is a boundary finding worth stating explicitly:
+the three-method re-finding approach suits moderate saved pools, while
+large pools point toward a different interaction paradigm. It does not
+invalidate the approach, but it marks where the approach reaches its
+limits.
+
+\paragraph{Trust.}
+Participants trusted the per-item explanations, namely the distance and
+time-of-day reasons attached to each recommendation. What they misread
+was the purpose of the system as a whole on first entry. Two
+participants initially interpreted the app as a general map or a trip
+planner. The recommender therefore earns trust at the level of
+individual items but lacks clear framing at the level of the system.
+Several participants suggested an onboarding step that would explain what
+re-finding is and what the app is for. We record this request but do not
+adopt it as the fix. Consumer tourism apps are conventionally used
+without an instruction step, and users expect to open them and start at
+once. An explicit tutorial would address the framing problem while
+breaking that expectation. We therefore treat the framing of purpose as an open design question rather than a request for a tutorial: how to make re-finding legible at first entry without an instruction step that the category does not expect.
+
+\subsubsection{Summary}
+
+The user study returns a consistent picture. At the item level the app
+is legible and trusted: participants understand why a place is
+recommended and value the re-finding it provides. The open questions sit
+at the system level, in how the app conveys its purpose on entry, in how
+it scales to large saved pools, and in how transparent the method
+behaviour is beyond the labels. The framing of purpose on first entry was the most consistent signal across the sessions, and we carry it forward as the central open question for the design. We do not read it as a case for an onboarding tutorial, since tourism apps are expected to work without instruction, but as a sign that the re-finding concept is still unfamiliar and has to be expressed more clearly within the design.
+
+\subsection{Tests and CI}
+\label{sec:tests}
+
+\paragraph{Backend.}
+The backend is covered by a \texttt{pytest} suite of 55 test functions
+across eight modules, run against the seeded development database. The
+metric implementations are pinned so they cannot drift silently:
+Precision@k, Success@k, and the unique ratio are asserted against exact
+hand-computed cases, while ROUGE-N and RBO are additionally covered by
+boundary and ordering properties (identical inputs, disjoint inputs,
+more overlap scores higher). Per-method tests exercise CBR, JITIR, and CIA
+on the seeded pool and assert the contract every ranker must honour:
+results are non-empty and correctly shaped, scores are sorted in
+descending order, the \texttt{top\_k} cutoff is respected, and an empty
+pool yields an empty result; a JITIR-specific test asserts that an empty
+query returns nothing. A cross-method comparison test guards against the
+three methods collapsing onto a single identical ordering. Endpoint tests
+cover the two data-integrity decisions of Section~\ref{sec:backend}: that
+\texttt{GET /saved-items/:id} never changes the view count, that the
+ten-minute view debounce swallows an immediate second view and admits one
+after the window, and that the notes-editing endpoint persists, clears,
+and ignores unknown fields as specified. Finally, simulator tests assert
+that a given seed reproduces the same sessions, that different seeds
+differ, and that generated coordinates stay inside plausible Munich
+bounds; this per-session seeding underpins the ten-seed averaging in
+Section~\ref{sec:offline}. The backend suite runs locally before results
+enter the report; it is deliberately not wired into continuous
+integration, since it exercises a live seeded database. The repository's
+GitHub Actions workflow runs on every push and pull request and currently
+covers the frontend checks: lint, the unit-test suite, and the design
+check.
+
+\paragraph{Frontend.}
+The frontend suite (49 vitest tests across four modules) targets the logic
+that user-visible behaviour depends on. The utilities it covers were extracted from the map page into
+standalone modules precisely so they could be tested in isolation:
+distance formatting, the reason-code-to-text mapper of the explanation
+layer, the OSM-tag-to-category mapper behind place search, and the
+method-label mapping. Two of these suites encode evaluation findings
+directly. The category-mapper tests pin the three miscategorisations the
+diary study surfaced (a bakery filed under shopping, a cinema and a
+theatre missed as attractions) as regression cases, so a defect found in
+real use cannot silently return. The label tests assert the exact
+label-to-method mapping of Table~\ref{tab:method-map} against its source
+of truth in \texttt{DESIGN.md}; the labels were once wired to the wrong
+methods, and because the study findings are stated in terms of these
+labels, an unnoticed re-wiring would invalidate the reported results, so
+the mapping is enforced by a test rather than by convention. The explanation-text suite
+runs against a frozen clock, keeping its time-phrase assertions
+deterministic. Alongside the unit tests, the \texttt{design-check} script
+of Section~\ref{sec:frontend} enforces the design-system bans statically.
+A GitHub Actions workflow runs on every push and pull request: ESLint,
+the vitest suite, and the design check, with the latter two gating the
+build.
+
+%% ============================================================
+%% 6. CONCLUSION & FUTURE WORK   [owner: shared]
+%% ============================================================
+\section{Conclusion and Future Work}
+% DRAFT (shared section) --- review jointly before submission.
+
+We set out to test whether the context-aware re-finding framework of
+Sappelli et al.~\cite{sappelli2017}, developed for office documents,
+transfers to personal tourism information. Three findings answer that
+question. First, the adaptation is faithful and the paper's central result
+reproduces: across four criteria no single method dominates---CBR maximises
+context precision, CIA leads action prediction and catalogue diversity, and
+JITIR sits between---so the methods are complementary rather than ranked.
+Second, the ordering that holds in the offline simulator also holds on real,
+week-long dogfooded data, where the three tabs visibly separate and the
+context signals respond to time and weather. Third, re-finding is a real but
+\emph{low-salience} need: users trust and value the per-item recommendations,
+name the moment-aware JITIR tab as most useful (which is why it is the
+default), yet several initially misread the app as a map or a planner. The
+value is at the item level; the open problem is at the system level.
+
+Future work follows the seams the evaluation exposed. On the modelling side,
+the offline evaluation should move from a simulator to \emph{real}
+interaction logs, and the CIA connection weights, currently the paper's
+fixed Table-3 heuristics, could be learned from those logs. The time-of-day
+signal should become timezone-aware and per-venue rather than per-category.
+The data model stores an event time on saved items, and CIA already
+consumes it as a coarse time-of-day context node; but nothing yet
+\emph{triggers} on the approaching time itself, and the save flow does not
+let users set one. A \emph{time-anchored} proactive trigger (surfacing a
+ticket or reservation as its time approaches) would be a stronger
+re-finding signal than the current category-and-proximity cues. On the product side, the study
+points to first-run framing of the re-finding concept, better place-search
+coverage and disambiguation, arbitrary-origin transit routing, and an
+organisation-and-routing mode for the large saved pools that heavy travellers
+described. Finally, a larger user study would convert the present
+directional evidence into measurement.
+
+%% ============================================================
+%% ETHICS & PRIVACY  (ACM template asks for this; keep ~3 sentences)
+%% ============================================================
+\section*{Ethics and Privacy Statement}
+\addcontentsline{toc}{section}{Ethics and Privacy Statement}
+% DRAFT (shared section) --- review jointly before submission.
+The user study was small, voluntary, and anonymous; participants were
+informed of the tasks and consented to session recording. The deployed
+prototype is a single shared demo pool without user accounts: the pool is
+initialised from a curated seed set that users extend with their own
+saves, and the only identifier attached to interactions is a hard-coded
+anonymous client id. Feedback events store a coarse context snapshot
+(coordinates and time of the judgement) used solely for per-method
+evaluation; no names, contact details, or persistent personal identifiers
+are collected, and nothing is shared with third parties. The serving path
+makes no live model calls; the only external call at runtime is the
+client's weather fetch to the keyless Open-Meteo API, pinned to Munich
+coordinates. Diary-study entries were recorded by the authors about their
+own use of the application.
+
+%% ============================================================
+%% GenAI DISCLOSURE  (REQUIRED by the course; does NOT count to page limit)
+%% ============================================================
+\section*{GenAI Disclosure}
+\addcontentsline{toc}{section}{GenAI Disclosure}
+% DRAFT --- edit to reflect your actual usage honestly before submission.
+The design direction, research framing, method choices, and all evaluation
+decisions in this project are the authors' own. Generative AI tools
+(Claude Code) were used as a coding and drafting assistant under
+author-defined constraints: for code refactoring and feature implementation
+against specifications the authors set, and for drafting and structuring
+prose from author-provided decisions, notes, and results. All technical
+claims, algorithm descriptions, and reported numbers were verified by the
+authors against the implementation and the experimental output. The authors
+take full responsibility for the content of this report.
+
+%% ============================================================
+%% BIBLIOGRAPHY
+%% Put refs in references.bib ; cite with \cite{key}. Key one: Sappelli 2017.
+%% ============================================================
+\phantomsection
+\addcontentsline{toc}{section}{References}
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+%% ============================================================
+%% APPENDIX (max 2 pages) - optional extra figures/tables
+%% ============================================================
+\appendix
+\section{Additional Material}
+\label{sec:appendix}
+Figure~\ref{fig:overview} collects the per-metric comparisons for all four
+methods across the six offline metrics, complementing the headline
+Precision@10 plot in Figure~\ref{fig:precision}.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{plot_overview.png}
+  \caption{Offline metric comparison across all four methods (mean over ten
+  seeds). Higher is better for every panel except RBO, where lower means
+  more responsive to context.}
+  \label{fig:overview}
+\end{figure}
+
+%% ============================================================
+%% CONTRIBUTIONS TABLE  (REQUIRED; does NOT count to page limit)
+%% Full names as on TUM transcripts, GitHub handles, contributions.
+%% ============================================================
+\section{Author Contributions}
+\begin{table}[h]
+  \caption{Author contributions}
+  \begin{tabular}{llp{7cm}}
+    \toprule
+    Full name & GitHub handle & Contribution \\
+    \midrule
+    Haichen Duan & Haichennn & Frontend, UI/UX, design system, frontend CI (lint, unit tests, design-check on GitHub Actions), user study, diary study and  visualization\\
+    Swayamsidh Mohanty & dhalakau & Backend, recommender method implementations, backend tests, evaluation pipeline, deployment\\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\end{document}
